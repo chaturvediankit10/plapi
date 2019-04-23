@@ -1,0 +1,78 @@
+.col-md-6{
+  max-width: 71% !important;
+}
+i {
+  border-width: 0 3px 3px 0;
+  display: inline-block;
+  padding: 3px;
+}
+.down {
+  transform: rotate(45deg);
+  -webkit-transform: rotate(45deg);
+}
+#sub_sheets{
+  display: none;
+}
+h4#sheet-title{
+  display: none;
+}
+.input-grp{
+	background-color: lightslategrey;
+	color: #fff;
+	padding: 5px 10px 5px;
+	margin: 10px;
+}
+
+.input-grp h5{
+	font-weight: 600;
+}
+
+ #search-form{
+    display: -webkit-inline-box;
+  }
+  .panel-basic {
+    border: 1px solid #ccc;
+    margin-bottom: 25px;
+  }
+  .panel-basic .panel-body {
+    min-height: 140px;
+    padding: 15px;
+  }
+  .panel-basic .input-grp {
+    margin: 0;
+    background-color: #95bae4;
+  }
+  .main-form {
+    border: 1px solid #ccc;
+    padding: 0px;
+  }
+  .main-form .panel-body {
+    padding: 15px;
+  }
+  .main-form .panel-heading {
+    background-color: #5399e2;
+    padding: 10px;
+    color: #fff;
+    font-weight: bold;
+  }
+
+  .lp, .refi {
+    color:red;
+  }
+  .valid {
+    display: none;
+  }
+
+  .error {
+    color: red
+  }
+.error-loan-purpose{
+  color: red;
+  display:none;
+}
+
+.reset{
+  margin-bottom: 5px;
+}
+
+

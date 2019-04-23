@@ -1,0 +1,33 @@
+<div class="container">
+  <div class="row col-md-6 col-md-offset-2 custyle">
+    <table class="table table-striped custab">
+      <thead>
+        <h4>Sheet</h4>
+        <tr onclick="myFunction()"><th><%= @sheet.name %><i class="fa fa-caret-down" id="indication-arrow"></i></th></tr>
+      </thead>
+    </table>
+    <table class="table table-striped custab" id="sub_sheets">
+      <thead>
+        <h4 id="sheet-title">Sub Sheets</h4>
+        <tr>
+          <th>No.</th>
+          <th>Name</th>
+          <th class="text-center">Action</th>
+          <th class="text-center">Error Log</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if @sheet %>
+          <% @sheet.sub_sheets.each_with_index do |sheet, index| %>
+            <tr>
+              <td><%= index +1 %></td>
+              <td><%= sheet.name %></td>
+              <td class="text-center"><a class='btn btn-info btn-xs' href=<%="/ob_lakeview_wholesale8393/" + sheet.id.to_s + "/" + (sheet.name.downcase.include?(" ") ? sheet.name.downcase.gsub("&", "").split.join(" ").tr(" ", "_") : sheet.name.downcase) %>><span class="glyphicon glyphicon-edit"></span> View</a></td>
+              <%= raw display_error_link(sheet) %>
+            </tr>
+          <%end%>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

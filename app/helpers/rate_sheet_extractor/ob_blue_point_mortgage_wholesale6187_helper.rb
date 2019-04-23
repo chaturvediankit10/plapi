@@ -1,0 +1,2 @@
+module RateSheetExtractor::ObBluePointMortgageWholesale6187Helper
+end

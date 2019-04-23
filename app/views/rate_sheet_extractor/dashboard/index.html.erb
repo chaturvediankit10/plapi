@@ -1,0 +1,791 @@
+<div class="container">
+  <!-- searching form -->
+  <div class="">
+    <div class="row">
+      <div class="col-md-10">
+      </div>
+      <div class="col-md-2 text-right reset">
+      <button id="reset_all_btn" class="btn btn-danger" >Reset All</button>
+      </div>
+    </div>
+    <%= form_tag('/dashboard/index', method: :get, id: :search_form) do %>
+      <div class="main-form panel">
+        <div class="panel-heading">Program Inputs</div>
+        <div class="panel-body">
+          <div class="row">
+            <div class="col-md-5">
+              <div class="program-panel panel-basic">
+                <div class="input-grp"><h5>Program Info</h5></div>
+                <div class="row panel-body">
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Bank Name</label>
+                      <%= select_tag 'bank_name', options_for_select(@all_banks_name.sort_by!{ |m| m.downcase }, params[:bank_name]), { :class=> "form-control" ,:include_blank => 'All'} %>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Loan Category</label>
+                      <%= select_tag 'loan_category', options_for_select(@loan_categories.sort_by!{ |m| m.downcase }, params[:loan_category]), { :class=> "form-control" ,:include_blank => 'All'} %>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Program Category</label>
+                      <%= select_tag 'pro_category', options_for_select(@program_categories, params[:pro_category]), { :class=> "form-control"} %>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group">
+                      <label>Program Name</label>
+                      <%= select_tag 'program_name', options_for_select(@program_names, params[:program_name]), { :include_blank => 'All', :class=> "form-control"} %>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-7">
+              <div class="panel-basic">
+                <div class="input-grp"><h5>Loan Property</h5></div>
+                <div class="row panel-body">
+                  <div class="row col-md-12">
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Loan Purpose</label>
+                          <%= select_tag 'loan_purpose', options_for_select(Program::LOAN_PURPOSE.flatten.sort_by!{ |m| m.downcase }, (params[:loan_purpose] rescue nil)), { prompt: 'Select Loan Purpose', :class=> "form-control" }%>
+                        <span class="error-loan-purpose">Please Select Refinance</span>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Loan Size</label>
+                          <%= select_tag 'loan_size', options_for_select(Program::LOAN_SIZE.flatten.sort_by!{ |m| m.downcase }, (params[:loan_size] rescue nil)), { prompt: 'Select Loan Size', :class=> "form-control" }%>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row col-md-12">
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Loan Type</label>
+                          <%= select_tag 'loan_type', options_for_select(Program::LOAN_TYPE.flatten.sort_by!{ |m| m.downcase }, (params[:loan_type] rescue nil)), { prompt: 'Select Loan Type', :class=> "form-control" } %>
+                      </div>
+                    </div>
+                    <div class="col-md-6 term">
+                      <div class="form-group">
+                        <label>Term</label>
+                        <div class="input-group">
+                          <%= select_tag 'term', options_for_select(@term_list, (params[:term] rescue nil)), { prompt: 'Select Term', :class=> "form-control" } %>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6 arm-basic">
+                      <div class="form-group">
+                        <label>ARM Basic</label>
+                        <div class="input-group">
+                          <%= select_tag 'arm_basic', options_for_select(Program::ARM_BASIC.flatten, (params[:arm_basic].present? ? params[:arm_basic] : "10/1 ARM")), { prompt: 'Select ARM Basic', :class=> "form-control"} %>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-md-6 arm-basic">
+                      <div class="form-group">
+                        <label>ARM Benchmark</label>
+                        <%= select_tag 'arm_benchmark', options_for_select(Program::ARM_BENCHMARK_LIST.flatten.sort_by!{ |m| m.downcase }, (params[:arm_benchmark] rescue nil)), { prompt: 'Select ARM Benchmark', :class=> "form-control" } %>
+                      </div>
+                    </div>
+                    <div class="col-md-6 arm-basic">
+                      <div class="form-group">
+                        <label>ARM Margin</label>
+                        <%= select_tag 'arm_margin', options_for_select(Program::ARM_MARGIN_LIST.flatten, (params[:arm_margin] rescue nil)), { prompt: 'Select ARM Margin', :class=> "form-control"} %>
+                      </div>
+                    </div>
+                    <div class="col-md-6 arm-basic">
+                      <div class="form-group">
+                        <label>ARM Advanced</label>
+                        <%= select_tag 'arm_advanced', options_for_select( @arm_advanced_list.flatten.sort_by!{ |m| m.downcase }.prepend(["All"]), (params[:arm_advanced] rescue nil)), { prompt: 'Select ARM Advanced', :class=> "form-control"} %>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row col-md-12">
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Interest Rate</label>
+                        <%= select_tag 'interest', options_for_select(Program::INTEREST_LIST, @interest), :class=> "form-control" %>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                        <label>Lock Period</label>
+                        <div class="input-group">
+                          <%= select_tag 'lock_period', options_for_select(Program::LOCK_PERIOD_LIST, @lock_period), :class=> "form-control" %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-5">
+              <div class="program-panel panel-basic">
+                <div class="input-grp"><h5>Government Program</h5></div>
+                <div class="row panel-body">
+                  <div class="col-md-12">
+                    <div class="row">
+                      <div class="col-md-4">
+                        <div class="form-group">
+                          <div class="checkbox">
+                            <label><%= check_box_tag 'streamline', 'streamline', params[:streamline].present? %> Streamline</label>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-4">
+                        <div class="form-group">
+                          <div class="checkbox">
+                            <label> <%= check_box_tag 'fha', 'fha', params[:fha].present? %> FHA</label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-12">
+                        <div class="form-group">
+                          <div class="checkbox">
+                            <label><%= check_box_tag 'va', 'va', params[:va].present? %> VA</label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="row">
+                      <div class="col-md-12">
+                        <div class="form-group">
+                          <div class="checkbox">
+                            <label><%= check_box_tag 'usda', 'usda', params[:usda].present? %> USDA</label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-7">
+              <div class="program-panel panel-basic">
+                <div class="input-grp"><h5>FM</h5></div>
+                <div class="row panel-body">
+                  <div class="row col-md-12">
+                    <div class="col-md-4">
+                      <div class="checkbox">
+                        <label> <%= check_box_tag 'fannie_mae', 'fannie_mae', params[:fannie_mae].present? %> Fannie Mae</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="checkbox">
+                        <label> <%= check_box_tag 'du', 'du', params[:du].present? %> DU</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-group">
+                        <%= select_tag 'fannie_mae_product', options_for_select(Program::FANNIE_MAE_PRODUCT_LIST.flatten.sort_by!{ |m| m.downcase }, (params[:fannie_mae_product] rescue nil)), { prompt: 'Select Product', :class=> "form-control" } %>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="row col-md-12">
+                    <div class="col-md-4">
+                      <div class="checkbox">
+                        <label> <%= check_box_tag 'freddie_mac', 'freddie_mac', params[:freddie_mac].present? %> Freddie Mac</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="checkbox">
+                        <label> <%= check_box_tag 'lp', 'lp', params[:lp].present? %> LP</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="form-group">
+                        <div class="form-group">
+                          <%= select_tag 'freddie_mac_product', options_for_select(Program::FREDDIE_MAC_PRODUCT_LIST.flatten.sort_by!{ |m| m.downcase }, (params[:freddie_mac_product] rescue nil)), { prompt: 'Select Product', :class=> "form-control" } %>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-2">
+              <div class="form-group">
+                <div class="checkbox">
+                  <label><%= check_box_tag 'full_doc', 'full_doc', params[:full_doc].present? %> Full Doc</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="main-form panel">
+        <div class="panel-heading">Adjustment Inputs</div>
+        <div class="panel-body">
+          <div class="row">
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Credit Score</label>
+                <div class="input-group">
+                  <%= select_tag 'credit_score', options_for_select(Program::CREDIT_SCORE_LIST, (params[:credit_score] rescue nil)), :class=> "form-control" %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>LTV</label>
+                <div class="input-group">
+                  <%= select_tag 'ltv', options_for_select(Program::LTV_VALUES, (params[:ltv] rescue nil)), :class=> "form-control" %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>CLTV</label>
+                <div class="input-group">
+                  <%= select_tag 'cltv', options_for_select(Program::CLTV_VALUES, (params[:cltv] rescue nil)), :class=> "form-control" %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>State</label>
+                <div class="input-group">
+                  <%= select_tag 'state', options_for_select(Program::STATE, (params[:state] rescue nil)), :class=> "form-control" %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Loan Amount</label>
+                <% @loan_amount_list =%>
+                <%= select_tag 'loan_amount', options_for_select(Program::LOAN_AMOUNT, (params[:loan_amount] rescue nil)), { :class=> "form-control", :required => true} %>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Program Category</label>
+                <%= select_tag 'program_category', options_for_select(Program::PROGRAM_CATEGORY_LIST.sort, (params[:program_category] rescue nil)), { :class=> "form-control", :required => true} %>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Property Type</label>
+                <div class="input-group">
+                  <%= select_tag 'property_type', options_for_select(Program::PROPERTY_TYPE_VALUES.sort, (params[:property_type] rescue nil)), :class=> "form-control" %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Financing Type</label>
+                <div class="input-group">
+                  <%= select_tag 'financing_type', options_for_select(Program::FINANCING_TYPE_VALUES.sort, (params[:financing_type] rescue nil)), :class=> "form-control" %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Refinance Option</label>
+                <div class="input-group">
+                  <%= select_tag 'refinance_option', options_for_select(Program::REFINANCE_OPTION_VALUES.sort, (params[:refinance_option] rescue nil)), :class=> "form-control" %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Misc Adjuster</label>
+                <div class="input-group">
+                  <%= select_tag 'misc_adjuster', options_for_select(Program::MISC_ADJUSTER_VALUES.sort, (params[:misc_adjuster] rescue nil)), :class=> "form-control" %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Payment Type</label>
+                <div class="input-group">
+                  <%= select_tag 'payment_type', options_for_select(Program::PATMENT_TYPE_VALUES.sort, (params[:payment_type] rescue nil)), :class=> "form-control" %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>DTI</label>
+                <div class="input-group">
+                  <%= select_tag 'dti', options_for_select(Program::DTI_VALUES.sort, (params[:dti] rescue nil)), :class=> "form-control" %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Coverage</label>
+                <div class="input-group">
+                  <%= select_tag 'coverage', options_for_select(Program::COVERAGE_VALUES.sort, (params[:coverage] rescue nil)), :class=> "form-control" %>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Margin</label>
+                <div class="input-group">
+                  <%= select_tag 'margin', options_for_select(Program::MARGIN_VALUES.sort, (params[:margin] rescue nil)), :class=> "form-control" %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-8"></div>
+        <div class="col-md-4">
+          <div class="form-group">
+            <div>
+              <label></label>
+            </div>
+            <%= submit_tag "Search", :class => "btn btn-info btn-block" %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+  <!-- end searching form -->
+  <div class="row col-md-12 custyle">
+    <table class="table table-striped custab table-bordered">
+      <thead>
+        <h2>Searched Programs</h2>
+        <tr>
+          <th>No.</th>
+          <th>Bank Name</th>
+          <th>Loan Category</th>
+          <th>Program Category</th>
+          <th>Program Name</th>
+          <th>Base Rate</th>
+          <th>Adjustments</th>
+          <th>Adjustment Names</th>
+          <th>Final Rate</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% if @result.present? %>
+        <% @result.each_with_index do |program, index|%>
+          <tr>
+            <td><%= index +1 %></td>
+            <td><%= program[:bank_name] %></td>
+            <td><%= program[:loan_category] %></td>
+            <td><%= program[:program_category] %></td>
+            <td><%= program[:program_name] %></td>
+            <% 
+              base_rate = (program[:base_rate].to_f).round(3).to_s
+              final_rate = (program[:final_rate].sum).round(3).to_s
+            %>
+            <td><%= base_rate.split(".").last.length == 1 ? base_rate + "00" : base_rate.split(".").last.length == 2 ? base_rate + "0" : base_rate %></td>
+            <td><%= program[:adj_points].map{|a| number_with_precision(a.round(3), :precision => 3)} unless program[:adj_points] == "Adjustment Not Present" %></td>
+            <td>
+              <%
+                if program[:adj_primary_key] == "Adjustment Not Present"
+                  %>
+                    <%#= program[:adj_primary_key] %>
+                  <%
+                else
+                  program[:adj_primary_key].each_with_index do |key, index|
+                    %>
+                      <%= index+1 %>. <%= key %><br/>
+                    <%
+                  end
+                end
+              %>
+            </td>
+            <td><%= final_rate.split(".").last.length == 1 ? final_rate + "00" : final_rate.split(".").last.length == 2 ? final_rate + "0" : final_rate rescue nil %></td>
+          </tr>
+        <%end%>
+      <%else%>
+        <tr>
+          <td colspan="9">No programs..</td>
+        </tr>
+      <%end%>
+      </tbody>
+    </table>
+  </div>
+  <div class="valid">
+    <div class='refi'>Please Select Refinance</div>
+    <div class='lp' >*Please select values</div>
+    <div>
+  <br>
+    <hr style="border-top: 3px double #8c8b8b;">
+  <br>
+
+</div>
+
+<script type="text/javascript">
+  $(document).ready(function(){
+    $('#bank_name').change(function(){
+      var bank_name =  $(this).val();
+      var loan_category = "All"
+      var pro_category = "All"
+
+      $.ajax({
+        type:'GET',
+        url:'/dashboard/fetch_programs_by_bank',
+        data: {bank_name : bank_name, loan_category: loan_category, pro_category: pro_category },
+        success:function(response){
+          var selectBox = document.getElementById('program_name');
+          selectBox.options.length = 0
+          selectBox.options.add( new Option('All', 'All'));
+          response.program_list.map((program)=>{
+            selectBox.options.add( new Option(program.name, program.name));
+          });
+          var selectBox2 = document.getElementById('loan_category');
+          selectBox2.options.length = 0
+          selectBox2.options.add( new Option('All', 'All'));
+          response.loan_category_list.map((loan_category)=>{
+            selectBox2.options.add( new Option(loan_category.name, loan_category.name));
+          });
+          var selectBox3 = document.getElementById('pro_category');
+          selectBox3.options.length = 0
+          response.pro_category_list.map((pro_category)=>{
+            selectBox3.options.add( new Option(pro_category.name, pro_category.name));
+          });
+
+        }
+      });
+    });
+
+    $('#loan_category').change(function(){
+      var loan_category =  $(this).val();
+      var bank_name = $('#bank_name').val()
+      var pro_category ="All"
+      $.ajax({
+        type:'GET',
+        url:'/dashboard/fetch_programs_by_bank',
+        data: {loan_category : loan_category, bank_name : bank_name, pro_category: pro_category },
+        success:function(response){
+          var selectBox = document.getElementById('program_name');
+          selectBox.options.length = 0
+          selectBox.options.add( new Option('All', 'All'));
+          response.program_list.map((program)=>{
+            selectBox.options.add( new Option(program.name, program.name));
+          });
+
+          var selectBox2 = document.getElementById('pro_category');
+          selectBox2.options.length = 0
+          response.pro_category_list.map((pro_category)=>{
+            selectBox2.options.add( new Option(pro_category.name, pro_category.name));
+          });
+        }
+      });
+    });
+
+    $('#pro_category').change(function(){
+      var pro_category =  $(this).val();
+      var bank_name = $('#bank_name').val()
+      var loan_category = $('#loan_category').val()
+      $.ajax({
+        type:'GET',
+        url:'/dashboard/fetch_programs_by_bank',
+        data: {loan_category : loan_category, bank_name : bank_name, pro_category: pro_category },
+        success:function(response){
+          var selectBox = document.getElementById('program_name');
+          selectBox.options.length = 0
+          selectBox.options.add( new Option('All', 'All'));
+          response.program_list.map((program)=>{
+            selectBox.options.add( new Option(program.name, program.name));
+          });
+        }
+      });
+    });
+
+    function setArmDefaultValues(){
+      $('#arm_benchmark').val('LIBOR')
+      $('#arm_margin').val('All')
+      $('#arm_advanced').val('All')
+      $('#arm_basic').val('5/1')
+    }
+
+    function setArmNullValues(){
+      $('#term').val('All')
+      $('#arm_benchmark').val('LIBOR')
+      $('#arm_margin').val('All')
+      $('#arm_advanced').val('All')
+      $('#arm_basic').val('All')
+    }
+
+    function setArmDefaultValuesOnLoan(){
+      if ($('#arm_benchmark').val()=='' && $("#loan_type").val() != "All" && $("#loan_type").val() != "ARM" ) {
+          $('#arm_benchmark').val('')
+        }
+        if ($('#arm_margin').val()=='' && $("#loan_type").val() != "All" && $("#loan_type").val() != "ARM" ) {
+          $('#arm_margin').val('All')
+        }
+        if ($('#arm_basic').val()=='' && $("#loan_type").val() != "All" && $("#loan_type").val() != "ARM" ) {
+          $('#arm_basic').val('5/1')
+        }
+    }
+
+    function showTermAndArmSectionOnLoan(){
+      if ($("#loan_type").val() == "ARM") {
+        $(".arm-basic").show();
+        $(".term").hide();
+      }else{
+       $(".arm-basic").hide();
+       $(".term").show();
+      }
+
+      if ($("#loan_type").val() == "All") {
+        $(".arm-basic").show();
+        $(".term").show();
+      }
+    }
+
+    setArmDefaultValuesOnLoan();
+    showTermAndArmSectionOnLoan();
+
+
+   $("#loan_type").on('click', function(e){
+     if ($(this).val()=="ARM"){
+      $(".term").hide()
+      $(".arm-basic").show()
+      setArmDefaultValues();
+     }else{
+      if ($(this).val()=="All"){
+        $(".arm-basic").show();
+        $(".term").show();
+        setArmNullValues();
+      }else{
+        $(".arm-basic").hide();
+        $(".term").show();
+      }
+     }
+   });
+  });
+
+  var fannie_mae = false
+  $('#du').click(function () {
+    if ($(this).prop("checked")){
+      fannie_mae = $('#fannie_mae').prop("checked")
+      $('#fannie_mae').prop('checked', true);
+    } else {
+      $('#fannie_mae').prop('checked', fannie_mae);
+    }
+  });
+
+  $('#fannie_mae').click(function () {
+    if ($(this).prop("checked")){
+      if ($('#du').prop("checked"))
+      $('#du').prop('checked', false);
+    } else {
+      if ($('#du').prop("checked"))
+      $('#du').prop('checked', false);
+    }
+  });
+
+  var freddie_mac = false
+  $('#lp').click(function () {
+    if ($(this).prop("checked")){
+      freddie_mac = $('#freddie_mac').prop("checked")
+      $('#freddie_mac').prop('checked', true);
+    } else {
+      $('#freddie_mac').prop('checked', freddie_mac);
+    }
+  });
+
+  $('#freddie_mac').click(function () {
+    if ($(this).prop("checked")){
+      if ($('#lp').prop("checked"))
+      $('#lp').prop('checked', false);
+    } else {
+      if ($('#lp').prop("checked"))
+      $('#lp').prop('checked', false);
+    }
+  });
+
+  // when streamline checked fha will be true and loan_purpose will be 'Refinance'
+  var fha_checked = false
+  var loan_purpose_value = $('#loan_purpose').val();
+  $('#streamline').click(function () {
+    if ($(this).prop("checked")){
+      fha_checked = $('#fha').prop("checked")
+      loan_purpose_value = $('#loan_purpose').val();
+      $("#loan_purpose").val('Refinance')
+      $('#fha').prop('checked', true);
+      $('#loan_purpose-error').hide();
+    } else {
+      $('#fha').prop('checked', fha_checked);
+      $("#loan_purpose").val(loan_purpose_value)
+      $('.error-loan-purpose').hide();
+    }
+  });
+
+  $('#fha').click(function () {
+    if ($(this).prop("checked")){
+      if ($('#streamline').prop("checked"))
+        $("#loan_purpose").val('')
+      $('#streamline').prop('checked', false);
+    } else {
+      if ($('#streamline').prop("checked"))
+        $("#loan_purpose").val('')
+      $('#streamline').prop('checked', false);
+    }
+  });
+
+  //loan_purpose default error hide
+  $('#loan_purpose').change(function () {
+    $('.error-loan-purpose').hide()
+  });
+
+  //when select fannie_mae_product fannie_mae will be true
+  $('#fannie_mae_product').change(function(){
+    if ($(this).val() == ""){
+      if ($('#du').prop("checked") == false) {
+        $('#fannie_mae').prop('checked', false)
+      }
+    }
+    else
+      $('#fannie_mae').prop('checked', true)
+  })
+
+  //when select freddie_mac_product freddie_mac will be true
+  $('#freddie_mac_product').change(function(){
+    if ($(this).val() == ""){
+      if ($('#lp').prop("checked") == false) {
+        $('#freddie_mac').prop('checked', false)
+      }
+    }
+    else
+      $('#freddie_mac').prop('checked', true)
+  })
+
+
+  // check Streamline and loan_purpose value
+  function checkLoanPurposeValue() {
+   var flag = true
+   if ($("#streamline").is(":checked")){
+       if ($("#loan_purpose").val() != "Refinance" && $("#loan_purpose").val() != "") {
+        flag = false
+       }
+    }
+    return flag
+  }
+
+  // form validation
+  $("#search_form").validate({
+    errorPlacement: function(error, element) {
+      $('.error-loan-purpose').hide();
+      if(checkLoanPurposeValue() == false){
+        $('html, body').animate({
+            scrollTop: $(".error-loan-purpose").offset().top
+        }, 1);
+        $('.error-loan-purpose').show()
+      }
+
+      var n = element.attr("name");
+      if (n == "loan_purpose"){
+        error.insertAfter(element);
+      }
+      if (n == "loan_size"){
+        error.insertAfter(element);
+      }
+      if (n == "loan_type"){
+        error.insertAfter(element);
+      }
+    },
+    messages: {
+      'loan_purpose': {
+          required: "This field is required",
+      },
+      'loan_size': {
+          required: "This field is required",
+      },
+      'loan_type': {
+          required: "This field is required",
+      }
+    },
+    rules: {
+        loan_purpose: {
+          required: true
+        },
+        loan_size: {
+          required: true
+        },
+        loan_type: {
+          required: true
+        }
+    },
+    highlight: function(element) {
+       $(element).addClass('has_error');
+    },
+    unhighlight: function(element) {
+        // remove the class "has_error" from the element 
+        $(element).removeClass('has_error');
+    },
+    submitHandler: function(form) {
+      if(checkLoanPurposeValue()){
+        form.submit();
+      }else{
+        $('html, body').animate({
+            scrollTop: $(".error-loan-purpose").offset().top
+        }, 1);
+        $('.error-loan-purpose').show()
+      }
+    }
+  });
+
+  $(document).ready(function(){
+      $('#reset_all_btn').click(function(event){
+        if ($(this).val()=="ARM"){
+          $(".term").hide()
+          $(".arm-basic").show()
+          setArmDefaultValues();
+         }else{
+          if ($(this).val()=="All"){
+            $(".arm-basic").show();
+            $(".term").show();
+            setArmNullValues();
+          }else{
+            $(".arm-basic").hide();
+            $(".term").show();
+          }
+         }
+        $('input:checkbox').removeAttr('checked');
+        $('#loan_type').val('')
+        $('#term').val('')
+        $('#arm_benchmark').val('LIBOR')
+        $('#arm_margin').val('All')
+        $('#arm_advanced').val('All')
+        $('#arm_basic').val('5/1')
+        $(".arm-basic").hide();
+        $(".term").show();
+        $('#bank_name').val('')
+        $('#term').val('')
+        $('#interest').val('4.500')
+        $('#lock_period').val('30')
+        $('#loan_category').val('')
+        $('#loan_category').val('')
+        $('#program_name').val('')
+        $('#loan_purpose').val('')
+        $('#loan_size').val('')
+        $('#fannie_mae_product').val('')
+        $('#freddie_mac_product').val('')
+        $('#credit_score').val('760 +')
+        $('#ltv').val('97 +')
+        $('#cltv').val('97 +')
+        $('#state').val('All')
+        $('#loan_amount').val('0 - 50000')
+        $('#program_category').val('7900')
+        $('#property_type').val('2-4 Unit')
+        $('#financing_type').val('Subordinate Financing')
+        $('#refinance_option').val('Cash Out')
+        $('#misc_adjuster').val('CA Escrow Waiver (Full or Taxes Only)')
+        $('#payment_type').val('Interest Only')
+        $('#dti').val('25.6%')
+        $('#coverage').val('30.5%')
+        $('#margin').val('2.0')
+      });
+  });
+
+
+</script>

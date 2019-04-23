@@ -1,0 +1,2 @@
+module RateSheetExtractor::ErrorLogsHelper
+end
