@@ -1562,9 +1562,6 @@ class RateSheetExtractor::ObNewfiWholesale7019Controller < RateSheetExtractor::A
                 if @data.compact.reject { |c| c.blank? }.length == 0
                   break # terminate the loop
                 end
-              rescue Exception => e
-                error_log = ErrorLog.new(details: e.backtrace_locations[0], row: rr, column: cc, loan_category: sheet, error_detail: e.message)
-                error_log.save
               end
               if @block_hash.keys.first.nil? || @block_hash.keys.first == "Rate"
                 @block_hash.shift
