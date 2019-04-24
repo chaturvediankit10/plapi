@@ -1,6 +1,6 @@
 require 'rake'
 require 'rubygems'
-PureLoan::Application.load_tasks
+RateSheetExtractor::Application.load_tasks
 class SheetWorkWorker
   include Sidekiq::Worker
 
