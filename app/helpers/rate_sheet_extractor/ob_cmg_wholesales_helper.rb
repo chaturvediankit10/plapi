@@ -1,2 +1,0 @@
-module RateSheetExtractor::ObCmgWholesalesHelper
-end

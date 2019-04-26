@@ -1,4 +1,4 @@
-class CreateProgramAdjustments < ActiveRecord::Migration[5.1]
+class CreateProgramAdjustments < ActiveRecord::Migration[5.2]
   def change
     create_table :program_adjustments do |t|
       t.integer :program_id

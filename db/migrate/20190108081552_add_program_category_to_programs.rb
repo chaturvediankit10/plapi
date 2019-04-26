@@ -1,4 +1,4 @@
-class AddProgramCategoryToPrograms < ActiveRecord::Migration[5.1]
+class AddProgramCategoryToPrograms < ActiveRecord::Migration[5.2]
   def change
     add_column :programs, :program_category, :string
     add_column :programs, :bank_name, :string

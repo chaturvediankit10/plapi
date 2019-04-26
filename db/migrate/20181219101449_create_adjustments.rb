@@ -1,4 +1,4 @@
-class CreateAdjustments < ActiveRecord::Migration[5.1]
+class CreateAdjustments < ActiveRecord::Migration[5.2]
   def change
     create_table :adjustments do |t|
     	t.json    :data

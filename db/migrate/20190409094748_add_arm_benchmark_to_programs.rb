@@ -1,4 +1,4 @@
-class AddArmBenchmarkToPrograms < ActiveRecord::Migration[5.1]
+class AddArmBenchmarkToPrograms < ActiveRecord::Migration[5.2]
   def change
     add_column :programs, :arm_benchmark, :string
     add_column :programs, :arm_margin, :float

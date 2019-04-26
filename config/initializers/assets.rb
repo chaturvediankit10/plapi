@@ -1,1 +1,1 @@
-Rails.application.config.assets.precompile += %w( rate_sheet_extractor/application.scss rate_sheet_extractor/datatables.scss rate_sheet_extractor/dashboard.scss rate_sheet_extractor/custom_style.css rate_sheet_extractor/application.js rate_sheet_extractor/cable.js rate_sheet_extractor/datatables.js )
+Rails.application.config.assets.precompile += %w( search_api/application.scss search_api/datatables.scss search_api/dashboard.scss search_api/custom_style.css search_api/application.js search_api/cable.js search_api/datatables.js )

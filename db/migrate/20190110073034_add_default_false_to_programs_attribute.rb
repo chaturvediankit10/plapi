@@ -1,4 +1,4 @@
-class AddDefaultFalseToProgramsAttribute < ActiveRecord::Migration[5.1]
+class AddDefaultFalseToProgramsAttribute < ActiveRecord::Migration[5.2]
   def up
   change_column :programs, :jumbo_high_balance, :boolean, default: false
   change_column :programs, :conforming, :boolean, default: false

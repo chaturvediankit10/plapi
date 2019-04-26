@@ -1,4 +1,4 @@
-class AddErrorDetailToErrorLogs < ActiveRecord::Migration[5.1]
+class AddErrorDetailToErrorLogs < ActiveRecord::Migration[5.2]
   def change
     add_column :error_logs, :error_detail, :text
   end

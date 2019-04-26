@@ -1,2 +1,0 @@
-module RateSheetExtractor::ObRoyalPacificFundingWholesale8409Helper
-end

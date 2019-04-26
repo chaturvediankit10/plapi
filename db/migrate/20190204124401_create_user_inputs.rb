@@ -1,4 +1,4 @@
-class CreateUserInputs < ActiveRecord::Migration[5.1]
+class CreateUserInputs < ActiveRecord::Migration[5.2]
   def change
     create_table :user_inputs do |t|
       t.text :property_type, array: true, default: []

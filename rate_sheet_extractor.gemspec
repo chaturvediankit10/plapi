@@ -1,17 +1,17 @@
 
 lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require "rate_sheet_extractor/version"
+require "search_api/version"
 
 Gem::Specification.new do |spec|
-  spec.name          = "rate_sheet_extractor"
-  spec.version       = RateSheetExtractor::VERSION
+  spec.name          = "search_api"
+  spec.version       = SearchApi::VERSION
   spec.authors       = ["Clara"]
   spec.email         = ["clara@gmail.com"]
 
-  spec.summary       = "RateSheetExtractor Gem"
+  spec.summary       = "SearchApi Gem"
   spec.description   = "New Gem"
-  spec.homepage      = "http://ratesheetextractor.com"
+  spec.homepage      = "http://SearchApi.com"
 
   # Prevent pushing this gem to RubyGems.org. To allow pushes either set the 'allowed_push_host'
   # to allow pushing to a single host or delete this section to allow pushing to any host.
@@ -42,17 +42,16 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'jquery-datatables'
   spec.add_dependency 'bootsnap', '>= 1.1.0'
 	spec.add_dependency 'bootstrap'
-	spec.add_dependency 'jquery-rails'
-	spec.add_dependency "roo", "~> 2.7.0"
-	spec.add_dependency 'roo-xls'
-	# spec.add_development_dependency 'bundler', '~> 2.0', '>= 2.0.1'
-	spec.add_dependency 'sidekiq'
-	spec.add_dependency 'google_drive'
-	spec.add_dependency 'redis-rails'
-  # s.add_dependency 'stripe'
-  spec.add_dependency 'tzinfo-data'
+	spec.add_dependency 'tzinfo-data'
 	spec.add_dependency "select2-rails"
-	spec.add_dependency 'csv'
-	spec.add_dependency 'jquery-validation-rails'
-  # s.add_dependency 'stripe'
+
+  spec.add_dependency 'jquery-rails'
+  spec.add_dependency "roo", "~> 2.7.0"
+  spec.add_dependency 'roo-xls'
+  spec.add_dependency 'sidekiq'
+  spec.add_dependency 'google_drive'
+  spec.add_dependency 'redis-rails'
+  spec.add_dependency 'csv'
+  spec.add_dependency 'jquery-validation-rails'
+
 end

@@ -1,2 +1,0 @@
-module RateSheetExtractor::ObDirectMortgageCorpWholesale8443Helper
-end

@@ -1,4 +1,4 @@
-class CreateSubSheets < ActiveRecord::Migration[5.1]
+class CreateSubSheets < ActiveRecord::Migration[5.2]
   def change
     create_table :sub_sheets do |t|
       t.string :name

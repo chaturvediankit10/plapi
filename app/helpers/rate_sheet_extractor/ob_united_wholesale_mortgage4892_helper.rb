@@ -1,2 +1,0 @@
-module RateSheetExtractor::ObUnitedWholesaleMortgage4892Helper
-end

@@ -1,2 +1,0 @@
-module RateSheetExtractor::DashboardHelper
-end

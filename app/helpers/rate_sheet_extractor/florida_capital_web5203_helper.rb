@@ -1,2 +1,0 @@
-module RateSheetExtractor::FloridaCapitalWeb5203Helper
-end
