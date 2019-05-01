@@ -1,3 +1,4 @@
+# This migration comes from search_api_engine (originally 20190204124401)
 class CreateUserInputs < ActiveRecord::Migration[5.2]
   def change
     create_table :user_inputs do |t|

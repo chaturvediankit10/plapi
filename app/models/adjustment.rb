@@ -49,6 +49,7 @@ class Adjustment < ApplicationRecord
     "FreddieMacProduct",
     "LoanPurpose",
     "LoanSize",
-    "ProgramCategory"
+    "ProgramCategory",
+    "DTI"
   ]
 end

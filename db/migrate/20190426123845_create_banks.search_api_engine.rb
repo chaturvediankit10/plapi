@@ -1,3 +1,4 @@
+# This migration comes from search_api_engine (originally 20181206094852)
 class CreateBanks < ActiveRecord::Migration[5.2]
   def change
     create_table :banks do |t|

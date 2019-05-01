@@ -1,3 +1,4 @@
+# This migration comes from search_api_engine (originally 20181206095711)
 class CreatePrograms < ActiveRecord::Migration[5.2]
   def change
     create_table :programs do |t|

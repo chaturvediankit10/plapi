@@ -1,3 +1,4 @@
+# This migration comes from search_api_engine (originally 20190320084010)
 class RenameSheetNameToPrograms < ActiveRecord::Migration[5.2]
   def change
   	rename_column :programs, :sheet_name, :loan_category

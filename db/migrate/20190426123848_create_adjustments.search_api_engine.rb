@@ -1,3 +1,4 @@
+# This migration comes from search_api_engine (originally 20181219101449)
 class CreateAdjustments < ActiveRecord::Migration[5.2]
   def change
     create_table :adjustments do |t|

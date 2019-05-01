@@ -1,3 +1,4 @@
+# This migration comes from search_api_engine (originally 20190110073034)
 class AddDefaultFalseToProgramsAttribute < ActiveRecord::Migration[5.2]
   def up
   change_column :programs, :jumbo_high_balance, :boolean, default: false

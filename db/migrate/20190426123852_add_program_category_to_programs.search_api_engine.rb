@@ -1,3 +1,4 @@
+# This migration comes from search_api_engine (originally 20190108081552)
 class AddProgramCategoryToPrograms < ActiveRecord::Migration[5.2]
   def change
     add_column :programs, :program_category, :string
