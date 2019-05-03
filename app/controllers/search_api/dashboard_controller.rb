@@ -2593,11 +2593,11 @@ class SearchApi::DashboardController < ActionController::Base
         hash_obj[:adj_primary_key] = "Adjustment Not Present"
       end
       if hash_obj[:adj_points].present?
-        hash_obj[:final_rate] << value_interest.to_f
+        # hash_obj[:final_rate] << value_interest.to_f
         hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f))
         value_result << hash_obj
       else
-        hash_obj[:final_rate] << value_interest.to_f
+        # hash_obj[:final_rate] << value_interest.to_f
         hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f))
         value_result << hash_obj
       end
