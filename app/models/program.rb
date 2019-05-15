@@ -6,6 +6,7 @@ class Program < ApplicationRecord
   belongs_to :sub_sheet, optional: true
   before_save :add_bank_name
   # after_save :add_default_loan_size
+  POINTS_LIST = [{name: "No fees, no points", id: nil}, {name: "0 points", id: 0}, {name: "1 points", id: 1}, {name: "2 points", id: 2}]
 
   STATE = [["All"], ["AK"], ["AL"], ["AR"], ["AS"], ["AZ"], ["CA"], ["CO"], ["CT"], ["DC"], ["DE"], ["FL"], ["FM"], ["GA"], ["GU"], ["HI"], ["IA"], ["ID"], ["IL"], ["IN"], ["KS"], ["KY"], ["LA"], ["MA"], ["MD"], ["ME"], ["MH"], ["MI"], ["MN"], ["MO"], ["MP"], ["MS"], ["MT"], ["NC"], ["ND"], ["NE"], ["NH"], ["NJ"], ["NM"], ["NV"], ["NY"], ["OH"], ["OK"], ["OR"], ["PA"], ["PR"], ["PW"], ["RI"], ["SC"], ["SD"], ["TN"], ["TX"], ["UT"], ["VA"], ["VI"], ["VT"], ["WA"], ["WI"], ["WV"], ["WY"]]
 
@@ -54,6 +55,11 @@ class Program < ApplicationRecord
   COVERAGE_VALUES = [["30.5%"]]
 
   MARGIN_VALUES = [["2.0"]]
+
+  scope :all_programs, -> {self.find_by_sql("SELECT * from programs")}
+  # scope :arm_programs, -> {self.find_by_sql("SELECT * FROM programs WHERE loan_type = 'ARM'")}
+  # scope :no_arm_programs, -> {self.find_by_sql("SELECT * FROM programs WHERE loan_type != 'ARM'")}
+
 
   def add_bank_name
     self.bank_name = self.sheet.bank.name if self.sheet.present?
@@ -209,12 +215,12 @@ class Program < ApplicationRecord
   end
 
   def set_du
-    self.du = true
+    self.fannie_mae_du = true
     self.fannie_mae = true
   end
 
   def set_lp
-    self.lp = true
+    self.freddie_mac_lp = true
     self.freddie_mac = true
   end
 
@@ -343,17 +349,4 @@ class Program < ApplicationRecord
     }
     self.fannie_mae_product = present_word
   end
-
-  # def add_default_loan_size
-  #   p_name = self.program_name
-  #   present_word = nil
-  #   fetch_loan_size_fields.each{ |word|
-  #     if p_name.squish.downcase.include?(word.downcase)
-  #       present_word = word 
-  #       break
-  #     end
-  #   }
-  #   loan_size = get_high_balance_extra.include?(present_word) ? "High-Balance Extra" : get_high_balance.include?(present_word) ? "High-Balance" : get_jumbo.include?(present_word) ? "Jumbo" : get_super_conforming.include?(present_word) ? "Super Conforming" : get_non_conforming.include?(present_word) ? "Non-Conforming" : get_conforming.include?(present_word) ? "Conforming" : get_conf.include?(present_word) ? "Conforming and High-Balance" : get_non_conf_hb.include?(present_word) ? "Non-Conforming and Jumbo" : "Conforming"
-  #   self.update_column(:loan_size, loan_size)
-  # end
 end

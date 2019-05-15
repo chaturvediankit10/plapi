@@ -1,4 +1,4 @@
-class SearchApi::DashboardController < ActionController::Base
+class SearchApi::DashboardController < ApplicationController
   layout "application"
   before_action :set_default
 
@@ -7,17 +7,31 @@ class SearchApi::DashboardController < ActionController::Base
     @all_banks_name = @banks.pluck(:name)
     if params["commit"].present?
       set_variable
-      find_base_rate
+    else
+      set_default_values_without_submition
     end
+    find_base_rate
     fetch_programs_by_bank(true)
   end
 
-  def fetch_programs_by_bank(html_type=false)
-    @all_programs = Program.all
+  def list_of_banks_and_programs_with_search_results
+    @banks = Bank.all
+    @all_banks_name = @banks.pluck(:name)
+    if params["commit"].present?
+      set_variable
+    else
+      set_default_values_without_submition
+    end
+    find_base_rate
+    fetch_programs_by_bank(params)
+  end
+
+  def fetch_programs_by_bank(html_type=false, params)
+    # @all_programs = Program.where("created_at > ?", Time.now.prev_day)
+    @all_programs = Program.limit(100)
     @program_names = @all_programs.pluck(:program_name).uniq.compact.sort
     @loan_categories = @all_programs.pluck(:loan_category).uniq.compact.sort
     @program_categories = @all_programs.pluck(:program_category).uniq.compact.sort
-
     if params[:bank_name].present?
       if (params[:bank_name] == "All")
         @program_names = @all_programs.pluck(:program_name).uniq.compact.sort
@@ -54,7 +68,20 @@ class SearchApi::DashboardController < ActionController::Base
     else
       @program_categories << "No Category"
     end
-    render json: {program_list: @program_names.map{ |lc| {name: lc}}, loan_category_list: @loan_categories.map{ |lc| {name: lc}}, pro_category_list: @program_categories.map{ |lc| {name: lc}}} unless html_type
+    # render json: {program_list: @program_names.map{ |lc| {name: lc}}, loan_category_list: @loan_categories.map{ |lc| {name: lc}}, pro_category_list: @program_categories.map{ |lc| {name: lc}}} unless html_type
+  end
+
+  def set_default_values_without_submition
+    @filter_not_nil[:term] = nil
+    @filter_not_nil[:arm_basic] = nil
+    @filter_not_nil[:arm_advanced] = nil
+    @filter_not_nil[:arm_benchmark] = nil
+    @filter_not_nil[:arm_margin] = nil
+    set_flag_loan_type(true)
+  end
+
+  def set_flag_loan_type(flag)
+    @flag_loan_type = flag
   end
 
   def set_default
@@ -64,16 +91,49 @@ class SearchApi::DashboardController < ActionController::Base
     @filter_data = {}
     @filter_not_nil = {}
     @interest = "4.000"
+    @term = "30"
+    @ltv = []
+    @cltv = []
+    @credit_score = []
+    @flag_loan_type = false
     @lock_period ="30"
     @loan_size = "High-Balance"
     @loan_type = "Fixed"
-    @term = "30"
-    @ltv = []
-    @credit_score = []
-    @cltv = []
     @fannie_mae_product = "HomeReady"
     @freddie_mac_product = "Home Possible"
-    @flag_loan_type = false
+    @arm_basic = "5/1"
+    @arm_advanced = "1-1-5"
+    @program_category = "6900"
+    @property_type = "1 Unit"
+    @financing_type = "Subordinate Financing"
+    @premium_type ="1 Unit"
+    @refinance_option ="Cash Out"
+    @misc_adjuster = "CA Escrow Waiver (Full or Taxes Only)"
+    @state = "All"
+    @result = []
+    @loan_amount = "0 - 50000"
+    @ltv1 = "65.01 - 70.00"
+    @credit_score1 = "700-719"
+    @dti = "25.6%"
+    @loan_purpose = "Purchase"
+    @home_price = "300000"
+    @down_payment = "50000"
+    @coverage = "30.5%"
+    @margin = "2.0"
+    ltv_range = ("65.01-70.00".split("-").first.to_f.."65.01-70.00".split("-").last.to_f) rescue nil
+    array_data = []
+    ltv_range.step(0.01) { |f| array_data << f } rescue nil
+    @ltv = array_data.try(:uniq)
+
+    cltv_range = ("75.01-80.00".split("-").first.to_f.."75.01-80.00".split("-").last.to_f) rescue nil
+    array_data = []
+    cltv_range.step(0.01) { |f| array_data << f } rescue nil
+    @ltv = array_data.try(:uniq)
+
+    credit_score = ("700-719".split("-").first.to_f.."700-719".split("-").last.to_f) rescue nil
+    array_data = []
+    credit_score.step(0.01) { |f| array_data << f } rescue nil
+    @credit_score = array_data.try(:uniq)
   end
 
   def modified_ltv_cltv_credit_score
@@ -85,15 +145,21 @@ class SearchApi::DashboardController < ActionController::Base
           if key_value.include?("-")
             key_range = (key_value.split("-").first.to_f..key_value.split("-").last.to_f)
             key_range.step(0.01) { |f| array_data << f }
-            instance_variable_set("@#{key}", array_data.uniq)
+            instance_variable_set("@#{key}", array_data.try(:uniq))
+          else
+            instance_variable_set("@#{key}", key_value)
           end
         end
       end
       if key == "credit_score"
         key_value = params[key.to_sym]
         if key_value.present?
-          array_data = (key_value.split("-").first.to_i..key_value.split("-").last.to_i)
-          instance_variable_set("@#{key}", array_data.uniq)
+          if key_value.include?("-")
+            array_data = (key_value.split("-").first.to_i..key_value.split("-").last.to_i)
+            instance_variable_set("@#{key}", array_data.try(:uniq))
+          else
+            instance_variable_set("@#{key}", key_value)
+          end
         end
       end
     end
@@ -233,6 +299,8 @@ class SearchApi::DashboardController < ActionController::Base
           set_term
         end
       end
+    else
+      set_flag_loan_type(true)
     end
 
     if params[:loan_size].present?
@@ -240,6 +308,10 @@ class SearchApi::DashboardController < ActionController::Base
         @filter_not_nil[:loan_size] = nil
       end
     end
+    @credit_score1 = params[:credit_score].present? ? params[:credit_score] : ""
+    @ltv1 = params[:ltv].present? ? params[:ltv] : ""
+    @home_price = params[:home_price].present? ? params[:home_price].tr(',', '') : "300000"
+    @down_payment = params[:down_payment].present? ? params[:down_payment].tr(',', '') : "50000"
   end
 
   def find_programs_on_term_based(programs, find_term)
@@ -370,7 +442,7 @@ class SearchApi::DashboardController < ActionController::Base
 
     @result= []
     if total_searched_program.present?
-      @result = find_adjustments_by_searched_programs(total_searched_program, @lock_period, @arm_basic, @arm_advanced, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
+      @result = find_adjustments_by_searched_programs((params["commit"].present? ? total_searched_program : Program.all), @lock_period, @arm_basic, @arm_advanced, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
     end
   end
 
@@ -411,7 +483,7 @@ class SearchApi::DashboardController < ActionController::Base
       end
       @result= []
       if @programs.present?
-        @result = find_adjustments_by_searched_programs(@programs, @lock_period, @arm_basic, @arm_advanced, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
+        @result = find_adjustments_by_searched_programs((params["commit"].present? ? @programs : Program.all), @lock_period, @arm_basic, @arm_advanced, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
       end
     end
   end
@@ -427,21 +499,64 @@ class SearchApi::DashboardController < ActionController::Base
   # concer code for input api
   def find_adjustments_by_searched_programs(programs, value_lock_period, value_arm_basic, value_arm_advanced, value_fannie_mae_product, value_freddie_mac_product, value_loan_purpose, value_program_category, value_property_type, value_financing_type, value_premium_type, value_refinance_option, value_misc_adjuster, value_state, value_loan_type, value_loan_size, value_result, value_interest, value_loan_amount, value_ltv, value_cltv, value_term, value_credit_score, value_dti)
     hash_obj = {
-      :bank_name => "",
+      :id => "",
+      :conforming => "",
+      :fannie_mae => "",
+      :fannie_mae_home_ready => "",
+      :freddie_mac => "",
+      :freddie_mac_home_possible => "",
+      :fha => "",
+      :va => "",
+      :usda => "",
+      :streamline => "",
+      :full_doc => "",
       :loan_category => "",
       :program_category => "",
+      :bank_name => "",
       :program_name => "",
+      :loan_type => "",
+      :loan_purpose => "",
+      :arm_basic => "",
+      :arm_advanced => "",
+      :loan_size => "",
+      :fannie_mae_product => "",
+      :freddie_mac_product => "",
+      :fannie_mae_du => "",
+      :freddie_mac_lp => "",
+      :arm_benchmark => "",
+      :arm_margin => "",
       :base_rate => 0.0,
       :adj_points => [],
       :adj_primary_key => [],
       :final_rate => []
     }
     programs.each do |pro|
-      hash_obj[:bank_name] = pro.bank_name.present? ? pro.bank_name : ""
-      hash_obj[:loan_category] = pro.loan_category.present? ? pro.loan_category : ""
-      hash_obj[:program_category] = pro.program_category.present? ? pro.program_category : ""
-      hash_obj[:program_name] = pro.program_name.present? ? pro.program_name : ""
-
+      hash_obj[:id] = pro.id
+      hash_obj[:conforming] = pro.conforming
+      hash_obj[:fannie_mae] = pro.fannie_mae
+      hash_obj[:fannie_mae_home_ready] = pro.fannie_mae_home_ready
+      hash_obj[:freddie_mac] = pro.freddie_mac
+      hash_obj[:freddie_mac_home_possible] = pro.freddie_mac_home_possible
+      hash_obj[:fha] = pro.fha
+      hash_obj[:va] = pro.va
+      hash_obj[:usda] = pro.usda
+      hash_obj[:streamline] = pro.streamline
+      hash_obj[:full_doc] = pro.full_doc
+      hash_obj[:loan_category] = pro.loan_category
+      hash_obj[:program_category] = pro.program_category
+      hash_obj[:bank_name] = pro.bank_name
+      hash_obj[:program_name] = pro.program_name
+      hash_obj[:loan_type] = pro.loan_type
+      hash_obj[:loan_purpose] = pro.loan_purpose
+      hash_obj[:arm_basic] = pro.arm_basic
+      hash_obj[:arm_advanced] = pro.arm_advanced
+      hash_obj[:loan_size] = pro.loan_size
+      hash_obj[:fannie_mae_product] = pro.fannie_mae_product
+      hash_obj[:freddie_mac_product] = pro.freddie_mac_product
+      hash_obj[:fannie_mae_du] = pro.fannie_mae_du
+      hash_obj[:freddie_mac_lp] = pro.freddie_mac_lp
+      hash_obj[:arm_benchmark] = pro.arm_benchmark
+      hash_obj[:arm_margin] = pro.arm_margin
       if pro.base_rate.present?
         base_rate_keys = pro.base_rate.keys.map{ |k| ActionController::Base.helpers.number_with_precision(k, :precision => 3)}
 
@@ -493,7 +608,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmBasic"
@@ -504,7 +618,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmAdvanced"
@@ -515,7 +628,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FannieMaeProduct"
@@ -526,7 +638,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FreddieMacProduct"
@@ -537,7 +648,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "LoanPurpose"
@@ -548,7 +658,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -566,7 +675,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -578,7 +686,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -590,7 +697,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FinancingType"
@@ -601,7 +707,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "PremiumType"
@@ -612,7 +717,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -630,7 +734,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -648,7 +751,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -660,7 +762,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -672,7 +773,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -686,7 +786,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -704,7 +803,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -725,7 +823,6 @@ class SearchApi::DashboardController < ActionController::Base
                       end
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -737,7 +834,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -751,7 +847,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -765,7 +860,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -779,7 +873,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmBasic"
@@ -790,7 +883,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmAdvanced"
@@ -801,7 +893,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FannieMaeProduct"
@@ -812,7 +903,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FreddieMacProduct"
@@ -823,7 +913,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "LoanPurpose"
@@ -834,7 +923,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -852,7 +940,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -864,7 +951,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -876,7 +962,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FinancingType"
@@ -887,7 +972,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "PremiumType"
@@ -898,7 +982,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -917,7 +1000,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -935,7 +1017,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -947,7 +1028,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -959,7 +1039,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -973,7 +1052,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "CLTV"
@@ -990,7 +1068,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1011,7 +1088,6 @@ class SearchApi::DashboardController < ActionController::Base
                       end
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1023,7 +1099,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1037,7 +1112,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1051,7 +1125,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1066,7 +1139,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmBasic"
@@ -1077,7 +1149,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmAdvanced"
@@ -1088,7 +1159,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FannieMaeProduct"
@@ -1099,7 +1169,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FreddieMacProduct"
@@ -1110,7 +1179,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "LoanPurpose"
@@ -1121,7 +1189,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1139,7 +1206,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1151,7 +1217,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1163,7 +1228,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FinancingType"
@@ -1174,7 +1238,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "PremiumType"
@@ -1185,7 +1248,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1204,7 +1266,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1222,7 +1283,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1234,7 +1294,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1246,7 +1305,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "LoanSize"
@@ -1259,7 +1317,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "CLTV"
@@ -1276,7 +1333,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1297,7 +1353,6 @@ class SearchApi::DashboardController < ActionController::Base
                       end
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1309,7 +1364,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "Term"
@@ -1322,7 +1376,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1336,7 +1389,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1350,7 +1402,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmBasic"
@@ -1361,7 +1412,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmAdvanced"
@@ -1372,7 +1422,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FannieMaeProduct"
@@ -1383,7 +1432,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FreddieMacProduct"
@@ -1394,7 +1442,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "LoanPurpose"
@@ -1405,7 +1452,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1424,7 +1470,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1436,7 +1481,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1448,7 +1492,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FinancingType"
@@ -1459,7 +1502,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "PremiumType"
@@ -1470,7 +1512,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1479,7 +1520,6 @@ class SearchApi::DashboardController < ActionController::Base
                     if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
                       ltv_key2 = ''
                       ltv_key2 = ltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_ltv)
-
                       if ltv_key2.present?
                         adj_key_hash[key_index] = ltv_key2
                       else
@@ -1489,7 +1529,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1507,7 +1546,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1519,7 +1557,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1531,7 +1568,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "LoanSize"
@@ -1544,7 +1580,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "CLTV"
@@ -1561,7 +1596,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1582,7 +1616,6 @@ class SearchApi::DashboardController < ActionController::Base
                       end
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1594,7 +1627,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "Term"
@@ -1607,7 +1639,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1621,7 +1652,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1635,7 +1665,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmBasic"
@@ -1646,7 +1675,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmAdvanced"
@@ -1657,7 +1685,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FannieMaeProduct"
@@ -1668,7 +1695,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FreddieMacProduct"
@@ -1679,7 +1705,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "LoanPurpose"
@@ -1690,7 +1715,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1709,7 +1733,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1721,7 +1744,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1733,7 +1755,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FinancingType"
@@ -1744,7 +1765,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "PremiumType"
@@ -1755,7 +1775,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1774,7 +1793,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1792,7 +1810,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1804,7 +1821,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "MiscAdjuster"
@@ -1815,7 +1831,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "LoanSize"
@@ -1828,7 +1843,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "CLTV"
@@ -1845,7 +1859,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1866,7 +1879,6 @@ class SearchApi::DashboardController < ActionController::Base
                       end
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1878,7 +1890,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1892,7 +1903,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1906,7 +1916,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1920,7 +1929,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmBasic"
@@ -1931,7 +1939,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmAdvanced"
@@ -1942,7 +1949,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FannieMaeProduct"
@@ -1953,7 +1959,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FreddieMacProduct"
@@ -1964,7 +1969,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "LoanPurpose"
@@ -1975,7 +1979,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -1994,7 +1997,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2006,7 +2008,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2018,7 +2019,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FinancingType"
@@ -2029,7 +2029,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "PremiumType"
@@ -2040,7 +2039,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2059,7 +2057,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2077,7 +2074,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2089,7 +2085,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2101,7 +2096,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "LoanSize"
@@ -2114,7 +2108,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "CLTV"
@@ -2131,7 +2124,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2152,7 +2144,6 @@ class SearchApi::DashboardController < ActionController::Base
                       end
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2164,7 +2155,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "Term"
@@ -2177,7 +2167,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2191,7 +2180,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2205,7 +2193,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmBasic"
@@ -2216,7 +2203,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "ArmAdvanced"
@@ -2227,7 +2213,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FannieMaeProduct"
@@ -2238,7 +2223,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FreddieMacProduct"
@@ -2249,7 +2233,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "LoanPurpose"
@@ -2260,7 +2243,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2279,7 +2261,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2291,7 +2272,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2303,7 +2283,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "FinancingType"
@@ -2314,7 +2293,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
                 if key_name == "PremiumType"
@@ -2325,7 +2303,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2344,7 +2321,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2362,7 +2338,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2374,7 +2349,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2386,7 +2360,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2400,7 +2373,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2418,7 +2390,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2439,7 +2410,6 @@ class SearchApi::DashboardController < ActionController::Base
                       end
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2451,7 +2421,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2465,7 +2434,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2479,7 +2447,6 @@ class SearchApi::DashboardController < ActionController::Base
                       break
                     end
                   rescue Exception
-                    puts "Adjustment Error: Adjustment Id: #{adj.id}, Adjustment Primary Key: #{first_key}, Key Name: #{key_name}, Loan Category: #{adj.loan_category}"
                   end
                 end
 
@@ -2603,15 +2570,37 @@ class SearchApi::DashboardController < ActionController::Base
       end
 
       hash_obj = {
-      :bank_name => "",
-      :loan_category => "",
-      :program_category => "",
-      :program_name => "",
-      :base_rate => 0.0,
-      :adj_points => [],
-      :adj_primary_key => [],
-      :final_rate => []
-    }
+        :id => "",
+        :conforming => "",
+        :fannie_mae => "",
+        :fannie_mae_home_ready => "",
+        :freddie_mac => "",
+        :freddie_mac_home_possible => "",
+        :fha => "",
+        :va => "",
+        :usda => "",
+        :streamline => "",
+        :full_doc => "",
+        :loan_category => "",
+        :program_category => "",
+        :bank_name => "",
+        :program_name => "",
+        :loan_type => "",
+        :loan_purpose => "",
+        :arm_basic => "",
+        :arm_advanced => "",
+        :loan_size => "",
+        :fannie_mae_product => "",
+        :freddie_mac_product => "",
+        :fannie_mae_du => "",
+        :freddie_mac_lp => "",
+        :arm_benchmark => "",
+        :arm_margin => "",
+        :base_rate => 0.0,
+        :adj_points => [],
+        :adj_primary_key => [],
+        :final_rate => []
+      }
 
     end
     return value_result
