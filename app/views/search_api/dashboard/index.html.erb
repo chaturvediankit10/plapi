@@ -338,6 +338,30 @@
               </div>
             </div>
           </div>
+          <div>
+            <div class="col-md-2">
+              <div class="form-group">
+                <label>Points / Fees</label>
+                <div class="radio">
+                  <label>
+                    <%= radio_button_tag 'point', 'No-Point', params[:point]=='No-Point' ? true : false %> No fees, No points
+                  </label>
+                </div>
+                <div class="radio">
+                  <label>
+                    <%= radio_button_tag 'point', '0', params[:point]=='0' ? true : false %> 0 points
+                </div>
+                <div class="radio">
+                  <label>
+                    <%= radio_button_tag 'point', '1', params[:point]=='1' ? true : false %> 1 points
+                </div>
+                <div class="radio">
+                  <label>
+                    <%= radio_button_tag 'point', '2', params[:point]=='2' ? true : false%> 2 points
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="row">
@@ -369,6 +393,7 @@
           <th>Adjustments</th>
           <th>Adjustment Names</th>
           <th>Final Point</th>
+          <th>AIR</th>
         </tr>
       </thead>
       <tbody>
@@ -385,7 +410,8 @@
               base_rate = (program[:base_rate].to_f).round(3).to_s
               final_rate = (program[:final_rate].sum).round(3).to_s
             %>
-            <td><%= base_rate.split(".").last.length == 1 ? base_rate + "00" : base_rate.split(".").last.length == 2 ? base_rate + "0" : base_rate %></td>
+            <td><%= base_rate.split(".").last.length == 1 ? base_rate + "00" : base_rate.split(".").last.length == 2 ? base_rate + "0" : base_rate %>
+            </td>
             <td>
               <% if (program[:adj_points] == "Adjustment Not Present") %>
                 <%#= program[:adj_points] %>
@@ -412,7 +438,9 @@
                 end
               %>
             </td>
-            <td><%= final_rate.split(".").last.length == 1 ? final_rate + "00" : final_rate.split(".").last.length == 2 ? final_rate + "0" : final_rate rescue nil %></td>
+            <td><%= final_rate.split(".").last.length == 1 ? final_rate + "00" : final_rate.split(".").last.length == 2 ? final_rate + "0" : final_rate rescue nil %>
+            </td>
+            <td><%= program[:air] %></td>
           </tr>
         <%end%>
       <%else%>
