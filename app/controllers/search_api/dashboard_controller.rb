@@ -500,6 +500,7 @@ class SearchApi::DashboardController < ApplicationController
   def find_adjustments_by_searched_programs(programs, value_lock_period, value_arm_basic, value_arm_advanced, value_fannie_mae_product, value_freddie_mac_product, value_loan_purpose, value_program_category, value_property_type, value_financing_type, value_premium_type, value_refinance_option, value_misc_adjuster, value_state, value_loan_type, value_loan_size, value_result, value_interest, value_loan_amount, value_ltv, value_cltv, value_term, value_credit_score, value_dti)
     hash_obj = {
       :id => "",
+      :air => "",
       :conforming => "",
       :fannie_mae => "",
       :fannie_mae_home_ready => "",
@@ -2562,6 +2563,9 @@ class SearchApi::DashboardController < ApplicationController
       end
       if hash_obj[:adj_points].present?
         # hash_obj[:final_rate] << value_interest.to_f
+        if params[:point].present? && params[:point] != "No-Point"
+          hash_obj[:air] = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], params[:point].to_i)
+        end
         hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f))
         value_result << hash_obj
       else
@@ -2569,9 +2573,10 @@ class SearchApi::DashboardController < ApplicationController
         hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f))
         value_result << hash_obj
       end
-
+      
       hash_obj = {
         :id => "",
+        :air => "",
         :conforming => "",
         :fannie_mae => "",
         :fannie_mae_home_ready => "",
@@ -2857,6 +2862,19 @@ class SearchApi::DashboardController < ApplicationController
       end
     end
     return dti_key_2
+  end
+
+  def adjusted_interest_rate_calculate(pro, adj_points, point)
+    air_key = ''
+    base_rate_keys = pro.base_rate.keys
+    total_adj = adj_points.present? ? adj_points.sum : 0
+    yellow_keys = pro.base_rate.values.map{|a| a[@lock_period]}
+    orange_keys = yellow_keys.map{|a| (a.to_f + total_adj.to_f).round(3)}
+    air_value = orange_keys.map{|a| a.to_f if a.to_i==point}.compact.min
+    if air_value.present?
+      air_key = base_rate_keys[orange_keys.index(air_value)]
+    end
+    air_key
   end
 
 end
