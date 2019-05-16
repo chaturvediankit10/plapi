@@ -23,10 +23,10 @@ class SearchApi::DashboardController < ApplicationController
       set_default_values_without_submition
     end
     find_base_rate
-    fetch_programs_by_bank(params)
+    fetch_programs_by_bank(true)
   end
 
-  def fetch_programs_by_bank(html_type=false, params)
+  def fetch_programs_by_bank(html_type=false)
     # @all_programs = Program.where("created_at > ?", Time.now.prev_day)
     @all_programs = Program.limit(100)
     @program_names = @all_programs.pluck(:program_name).uniq.compact.sort
@@ -68,7 +68,7 @@ class SearchApi::DashboardController < ApplicationController
     else
       @program_categories << "No Category"
     end
-    # render json: {program_list: @program_names.map{ |lc| {name: lc}}, loan_category_list: @loan_categories.map{ |lc| {name: lc}}, pro_category_list: @program_categories.map{ |lc| {name: lc}}} unless html_type
+    render json: {program_list: @program_names.map{ |lc| {name: lc}}, loan_category_list: @loan_categories.map{ |lc| {name: lc}}, pro_category_list: @program_categories.map{ |lc| {name: lc}}} unless html_type
   end
 
   def set_default_values_without_submition
