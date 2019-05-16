@@ -1,8 +1,8 @@
 class Program < ApplicationRecord
   belongs_to :bank, optional: true
   belongs_to :sheet, optional: true
-  has_many :program_adjustments
-  has_many :adjustments, through: :program_adjustments
+  # has_many :program_adjustments
+  # has_many :adjustments
   belongs_to :sub_sheet, optional: true
   before_save :add_bank_name
   # after_save :add_default_loan_size
@@ -69,6 +69,11 @@ class Program < ApplicationRecord
   def get_adjustments
     Adjustment.where(loan_category: self.loan_category)
   end
+
+  def adjustments
+    Adjustment.find(self.adjustment_ids.split(","))
+  end
+
 
   def get_non_conforming
     non_conforming = ["Non-Conforming","non conforming", "NON CONFORMING", "Non-Conf"]
