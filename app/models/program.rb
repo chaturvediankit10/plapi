@@ -71,7 +71,7 @@ class Program < ApplicationRecord
   end
 
   def adjustments
-    Adjustment.find(self.adjustment_ids.split(","))
+    self.adjustment_ids.present? ? Adjustment.find(self.adjustment_ids.split(",")) : nil
   end
 
 
