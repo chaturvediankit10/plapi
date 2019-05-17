@@ -19,7 +19,7 @@
                 <div class="row panel-body">
                   <div class="col-md-6">
                     <div class="form-group">
-                      <label>Bank Name</label>
+                      <label>Bank Name Test</label>
                       <%= select_tag 'bank_name', options_for_select(@all_banks_name.sort_by!{ |m| m.downcase }, params[:bank_name]), { :class=> "form-control" ,:include_blank => 'All'} %>
                     </div>
                   </div>
