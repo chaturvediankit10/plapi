@@ -181,7 +181,7 @@
                     </div>
                     <div class="col-md-4">
                       <div class="checkbox">
-                        <label> <%= check_box_tag 'du', 'du', params[:du].present? %> DU</label>
+                        <label> <%= check_box_tag 'fannie_mae_du', 'fannie_mae_du', params[:fannie_mae_du].present? %> Fannie Mae DU</label>
                       </div>
                     </div>
                     <div class="col-md-4">
@@ -198,7 +198,7 @@
                     </div>
                     <div class="col-md-4">
                       <div class="checkbox">
-                        <label> <%= check_box_tag 'lp', 'lp', params[:lp].present? %> LP</label>
+                        <label> <%= check_box_tag 'freddie_mac_lp', 'freddie_mac_lp', params[:freddie_mac_lp].present? %> Freddie Mac LP</label>
                       </div>
                     </div>
                     <div class="col-md-4">
@@ -464,7 +464,7 @@
   </div>
   <div class="valid">
     <div class='refi'>Please Select Refinance</div>
-    <div class='lp' >*Please select values</div>
+    <div class='freddie_mac_lp' >*Please select values</div>
     <div>
   <br>
     <hr style="border-top: 3px double #8c8b8b;">
@@ -615,7 +615,7 @@
   });
 
   var fannie_mae = false
-  $('#du').click(function () {
+  $('#fannie_mae_du').click(function () {
     if ($(this).prop("checked")){
       fannie_mae = $('#fannie_mae').prop("checked")
       $('#fannie_mae').prop('checked', true);
@@ -626,16 +626,16 @@
 
   $('#fannie_mae').click(function () {
     if ($(this).prop("checked")){
-      if ($('#du').prop("checked"))
-      $('#du').prop('checked', false);
+      if ($('#fannie_mae_du').prop("checked"))
+      $('#fannie_mae_du').prop('checked', false);
     } else {
-      if ($('#du').prop("checked"))
-      $('#du').prop('checked', false);
+      if ($('#fannie_mae_du').prop("checked"))
+      $('#fannie_mae_du').prop('checked', false);
     }
   });
 
   var freddie_mac = false
-  $('#lp').click(function () {
+  $('#freddie_mac_lp').click(function () {
     if ($(this).prop("checked")){
       freddie_mac = $('#freddie_mac').prop("checked")
       $('#freddie_mac').prop('checked', true);
@@ -646,11 +646,11 @@
 
   $('#freddie_mac').click(function () {
     if ($(this).prop("checked")){
-      if ($('#lp').prop("checked"))
-      $('#lp').prop('checked', false);
+      if ($('#freddie_mac_lp').prop("checked"))
+      $('#freddie_mac_lp').prop('checked', false);
     } else {
-      if ($('#lp').prop("checked"))
-      $('#lp').prop('checked', false);
+      if ($('#freddie_mac_lp').prop("checked"))
+      $('#freddie_mac_lp').prop('checked', false);
     }
   });
 
@@ -691,7 +691,7 @@
   //when select fannie_mae_product fannie_mae will be true
   $('#fannie_mae_product').change(function(){
     if ($(this).val() == ""){
-      if ($('#du').prop("checked") == false) {
+      if ($('#fannie_mae_du').prop("checked") == false) {
         $('#fannie_mae').prop('checked', false)
       }
     }
@@ -702,7 +702,7 @@
   //when select freddie_mac_product freddie_mac will be true
   $('#freddie_mac_product').change(function(){
     if ($(this).val() == ""){
-      if ($('#lp').prop("checked") == false) {
+      if ($('#freddie_mac_lp').prop("checked") == false) {
         $('#freddie_mac').prop('checked', false)
       }
     }
