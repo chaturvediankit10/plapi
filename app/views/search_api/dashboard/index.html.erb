@@ -338,26 +338,31 @@
               </div>
             </div>
           </div>
-          <div>
-            <div class="col-md-2">
+          <div class="row">
+            <div class="col-md-4">
               <div class="form-group">
                 <label>Points / Fees</label>
-                <div class="radio">
-                  <label>
-                    <%= radio_button_tag 'point', 'No-Point', params[:point]=='No-Point' ? true : false %> No fees, No points
-                  </label>
-                </div>
-                <div class="radio">
-                  <label>
-                    <%= radio_button_tag 'point', '0', params[:point]=='0' ? true : false %> 0 points
-                </div>
-                <div class="radio">
-                  <label>
-                    <%= radio_button_tag 'point', '1', params[:point]=='1' ? true : false %> 1 points
-                </div>
-                <div class="radio">
-                  <label>
-                    <%= radio_button_tag 'point', '2', params[:point]=='2' ? true : false%> 2 points
+                <div class="radio-boxes">
+                  <div class="radio">
+                    <label>
+                      <%= radio_button_tag 'point', 'No-Point', params[:point]=='No-Point' ? true : false %> No fees, No points
+                    </label>
+                  </div>
+                  <div class="radio">
+                    <label>
+                      <%= radio_button_tag 'point', '0', params[:point]=='0' ? true : false %> 0 points
+                    </label>
+                  </div>
+                  <div class="radio">
+                    <label>
+                      <%= radio_button_tag 'point', '1', params[:point]=='1' ? true : false %> 1 points
+                    </label>
+                  </div>
+                  <div class="radio">
+                    <label>
+                      <%= radio_button_tag 'point', '2', params[:point]=='2' ? true : false%> 2 points
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -378,78 +383,84 @@
     <% end %>
   </div>
   <!-- end searching form -->
-  <div class="row col-md-12 custyle">
-    <table class="table table-striped custab table-bordered">
-      <thead>
+  <div class="custyle">
+    <div class="row">
+      <div class="col-md-12">
         <h2>Search Results</h2>
-        <tr>
-          <th>No.</th>
-          <th>Bank Name</th>
-          <th>Loan Category</th>
-          <th>Program Category</th>
-          <th>Program Name</th>
-          <th>Interest Rate</th>
-          <th>Base Point</th>
-          <th>Adjustments</th>
-          <th>Adjustment Names</th>
-          <th>Final Point</th>
-          <th>AIR</th>
-        </tr>
-      </thead>
-      <tbody>
-      <% if @result.present? %>
-        <% @result.each_with_index do |program, index|%>
-          <tr>
-            <td><%= index +1 %></td>
-            <td><%= program[:bank_name] %></td>
-            <td><%= program[:loan_category] %></td>
-            <td><%= program[:program_category] %></td>
-            <td><%= program[:program_name] %></td>
-            <td><%= @interest %></td>
-            <% 
-              base_rate = (program[:base_rate].to_f).round(3).to_s
-              final_rate = (program[:final_rate].sum).round(3).to_s
-            %>
-            <td><%= base_rate.split(".").last.length == 1 ? base_rate + "00" : base_rate.split(".").last.length == 2 ? base_rate + "0" : base_rate %>
-            </td>
-            <td>
-              <% if (program[:adj_points] == "Adjustment Not Present") %>
-                <%#= program[:adj_points] %>
-              <% else %>
-                <%if program[:adj_points].present? %>
-                <%= program[:adj_points].map{|a| number_with_precision(a.round(3), :precision => 3)} %>
-                <%end%>
-              <% end %>
-              </td>
-            <td>
-              <%
-                if program[:adj_primary_key] == "Adjustment Not Present"
+        <div class="result-table table-responsive">
+          <table class="table table-striped custab table-bordered">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Bank Name</th>
+                <th>Loan Category</th>
+                <th>Program Category</th>
+                <th>Program Name</th>
+                <th>Interest Rate</th>
+                <th>Base Point</th>
+                <th>Adjustments</th>
+                <th>Adjustment Names</th>
+                <th>Final Point</th>
+                <th>AIR</th>
+              </tr>
+            </thead>
+            <tbody>
+            <% if @result.present? %>
+              <% @result.each_with_index do |program, index|%>
+                <tr>
+                  <td><%= index +1 %></td>
+                  <td><%= program[:bank_name] %></td>
+                  <td><%= program[:loan_category] %></td>
+                  <td><%= program[:program_category] %></td>
+                  <td><%= program[:program_name] %></td>
+                  <td><%= @interest %></td>
+                  <% 
+                    base_rate = (program[:base_rate].to_f).round(3).to_s
+                    final_rate = (program[:final_rate].sum).round(3).to_s
                   %>
-                    <%#= program[:adj_primary_key] %>
-                  <%
-                else
-                  if program[:adj_primary_key].present?
-                    program[:adj_primary_key].each_with_index do |key, index|
-                      %>
-                        <%= index+1 %>. <%= key %><br/>
-                      <%
-                    end
-                  end
-                end
-              %>
-            </td>
-            <td><%= number_with_precision(final_rate, :precision => 3)%>
-            </td>
-            <td><%= number_with_precision(program[:air].to_s, :precision => 3)%></td>
-          </tr>
-        <%end%>
-      <%else%>
-        <tr>
-          <td colspan="11">No programs..</td>
-        </tr>
-      <%end%>
-      </tbody>
-    </table>
+                  <td><%= base_rate.split(".").last.length == 1 ? base_rate + "00" : base_rate.split(".").last.length == 2 ? base_rate + "0" : base_rate %>
+                  </td>
+                  <td>
+                    <% if (program[:adj_points] == "Adjustment Not Present") %>
+                      <%#= program[:adj_points] %>
+                    <% else %>
+                      <%if program[:adj_points].present? %>
+                      <%= program[:adj_points].map{|a| number_with_precision(a.round(3), :precision => 3)} %>
+                      <%end%>
+                    <% end %>
+                    </td>
+                  <td>
+                    <%
+                      if program[:adj_primary_key] == "Adjustment Not Present"
+                        %>
+                          <%#= program[:adj_primary_key] %>
+                        <%
+                      else
+                        if program[:adj_primary_key].present?
+                          program[:adj_primary_key].each_with_index do |key, index|
+                            %>
+                              <%= index+1 %>. <%= key %><br/>
+                            <%
+                          end
+                        end
+                      end
+                    %>
+                  </td>
+                  <td><%= number_with_precision(final_rate, :precision => 3)%>
+                  </td>
+                  <td><%= number_with_precision(program[:air].to_s, :precision => 3)%></td>
+                </tr>
+              <%end%>
+            <%else%>
+              <tr>
+                <td colspan="11">No programs..</td>
+              </tr>
+            <%end%>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="valid">
     <div class='refi'>Please Select Refinance</div>
@@ -826,3 +837,14 @@
 
 
 </script>
+
+<style type="text/css">
+  .result-table {
+    height: 500px;
+    overflow: scroll;
+    margin-bottom: 50px;
+  }
+  .radio-boxes {
+    margin-left: 15px;
+  }
+</style>
