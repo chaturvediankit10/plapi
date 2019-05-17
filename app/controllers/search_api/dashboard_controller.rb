@@ -101,7 +101,7 @@ class SearchApi::DashboardController < ApplicationController
     @loan_type = "Fixed"
     @fannie_mae_product = "HomeReady"
     @freddie_mac_product = "Home Possible"
-    @arm_basic = "5/1"
+    @arm_basic = "5"
     @arm_advanced = "1-1-5"
     @program_category = "6900"
     @property_type = "1 Unit"
@@ -120,17 +120,17 @@ class SearchApi::DashboardController < ApplicationController
     @down_payment = "50000"
     @coverage = "30.5%"
     @margin = "2.0"
-    ltv_range = ("65.01-70.00".split("-").first.to_f.."65.01-70.00".split("-").last.to_f) rescue nil
+    ltv_range = 65.01..70.0
     array_data = []
-    ltv_range.step(0.01) { |f| array_data << f } rescue nil
+    ltv_range.step(0.01) { |f| array_data << f.round(2) } rescue nil
     @ltv = array_data.try(:uniq)
 
-    cltv_range = ("75.01-80.00".split("-").first.to_f.."75.01-80.00".split("-").last.to_f) rescue nil
+    cltv_range = 75.01..80.0
     array_data = []
-    cltv_range.step(0.01) { |f| array_data << f } rescue nil
-    @ltv = array_data.try(:uniq)
+    cltv_range.step(0.01) { |f| array_data << f.round(2) } rescue nil
+    @cltv = array_data.try(:uniq)
 
-    credit_score = ("700-719".split("-").first.to_f.."700-719".split("-").last.to_f) rescue nil
+    credit_score = 700.0..719.0
     array_data = []
     credit_score.step(0.01) { |f| array_data << f } rescue nil
     @credit_score = array_data.try(:uniq)
