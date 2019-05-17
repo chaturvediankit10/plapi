@@ -1,4 +1,4 @@
-class RenameAdjustmentColumnInProgram < ActiveRecord::Migration[5.2]
+class RenameAdjustmentColumnInProgram < ActiveRecord::Migration[5.1]
   def change
   	rename_column :programs, :adjustments, :adjustment_ids
   	rename_column :programs, :du, :fannie_mae_du
