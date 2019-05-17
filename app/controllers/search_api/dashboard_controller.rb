@@ -194,7 +194,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def modified_true_condition
-    %w[fannie_mae freddie_mac du lp fha va usda streamline full_doc].each do |key|
+    %w[fannie_mae freddie_mac fannie_mae_du freddie_mac_lp fha va usda streamline full_doc].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
         @filter_data[key.to_sym] = true
