@@ -129,11 +129,7 @@ class SearchApi::DashboardController < ApplicationController
     array_data = []
     cltv_range.step(0.01) { |f| array_data << f.round(2) } rescue nil
     @cltv = array_data.try(:uniq)
-
-    credit_score = 700.0..719.0
-    array_data = []
-    credit_score.step(0.01) { |f| array_data << f } rescue nil
-    @credit_score = array_data.try(:uniq)
+    @credit_score = (700..719).to_a
   end
 
   def modified_ltv_cltv_credit_score
@@ -155,7 +151,7 @@ class SearchApi::DashboardController < ApplicationController
         key_value = params[key.to_sym]
         if key_value.present?
           if key_value.include?("-")
-            array_data = (key_value.split("-").first.to_i..key_value.split("-").last.to_i)
+            array_data = (key_value.split("-").first.to_i..key_value.split("-").last.to_i).to_a
             instance_variable_set("@#{key}", array_data.try(:uniq))
           else
             instance_variable_set("@#{key}", key_value)
@@ -411,10 +407,12 @@ class SearchApi::DashboardController < ApplicationController
       end
     end
     if arm_programs.present?
+      term_programs = calculate_base_rate_of_selected_programs(term_programs)
       arm_ids = arm_programs.pluck(:id)
       arm_programs = Program.where(id: arm_ids).where(@filter_data.except(:term))
     end
     if term_programs.present?
+      term_programs = calculate_base_rate_of_selected_programs(term_programs)
       term_ids = term_programs.pluck(:id)
       term_programs = Program.where(id: term_ids).where(@filter_data.except(:arm_basic, :arm_advanced, :arm_benchmark, :arm_margin, :term))
     end
@@ -442,7 +440,7 @@ class SearchApi::DashboardController < ApplicationController
 
     @result= []
     if total_searched_program.present?
-      @result = find_adjustments_by_searched_programs((params["commit"].present? ? total_searched_program : Program.all), @lock_period, @arm_basic, @arm_advanced, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
+      @result = find_adjustments_by_searched_programs(total_searched_program, @lock_period, @arm_basic, @arm_advanced, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
     end
   end
 
@@ -483,7 +481,7 @@ class SearchApi::DashboardController < ApplicationController
       end
       @result= []
       if @programs.present?
-        @result = find_adjustments_by_searched_programs((params["commit"].present? ? @programs : Program.all), @lock_period, @arm_basic, @arm_advanced, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
+        @result = find_adjustments_by_searched_programs(@programs, @lock_period, @arm_basic, @arm_advanced, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
       end
     end
   end
@@ -2689,7 +2687,7 @@ class SearchApi::DashboardController < ApplicationController
         ltv_key_range =[]
         if ltv_key.include?("Inf") || ltv_key.include?("Infinity")
           first_range = ltv_key.split("-").first.strip.to_f
-          if params[:ltv].include?("+")
+          if params[:ltv] && params[:ltv].include?("+")
               ltv_key2 = ltv_key
           else
             if first_range <= value_ltv.last
@@ -2699,8 +2697,8 @@ class SearchApi::DashboardController < ApplicationController
         else
           first_range = ltv_key.split("-").first.strip.to_f
           last_range =  ltv_key.split("-").last.strip.to_f
-          if params[:ltv].include?("+")
-            full_range = params[:ltv].split("+").first.strip.to_f
+          if params[:ltv] && params[:ltv].include?("+")
+            full_range = params[:ltv] && params[:ltv].split("+").first.strip.to_f
             if (full_range >= first_range && full_range < last_range )
               ltv_key2 = ltv_key
             end
@@ -2727,7 +2725,7 @@ class SearchApi::DashboardController < ApplicationController
         cltv_key_range =[]
         if cltv_key.include?("Inf") || cltv_key.include?("Infinity")
           first_range = cltv_key.split("-").first.strip.to_f
-          if params[:cltv].include?("+")
+          if params[:cltv] && params[:cltv].include?("+")
               cltv_key2 = cltv_key
           else
             if first_range <= value_cltv.last
@@ -2737,8 +2735,8 @@ class SearchApi::DashboardController < ApplicationController
         else
           first_range = cltv_key.split("-").first.strip.to_f
           last_range =  cltv_key.split("-").last.strip.to_f
-          if params[:cltv].include?("+")
-            full_range = params[:cltv].split("+").first.strip.to_f
+          if params[:cltv] && params[:cltv].include?("+")
+            full_range = params[:cltv] && params[:cltv].split("+").first.strip.to_f
             if (full_range >= first_range && full_range < last_range )
               cltv_key2 = cltv_key
             end
@@ -2828,7 +2826,7 @@ class SearchApi::DashboardController < ApplicationController
         fico_key_range =[]
         if fico_key.include?("Inf") || fico_key.include?("Infinity")
           first_range = fico_key.split("-").first.strip.to_i
-          if params[:credit_score].include?("+")
+          if params[:credit_score] && params[:credit_score].include?("+")
               fico_key2 = fico_key
           else
             if first_range <= value_credit_score.last
@@ -2838,8 +2836,8 @@ class SearchApi::DashboardController < ApplicationController
         else
           first_range = fico_key.split("-").first.strip.to_i
           last_range =  fico_key.split("-").last.strip.to_i
-          if params[:credit_score].include?("+")
-            full_range = params[:credit_score].split("+").first.strip.to_i
+          if params[:credit_score] && params[:credit_score].include?("+")
+            full_range = params[:credit_score] && params[:credit_score].split("+").first.strip.to_i
             if (full_range >= first_range && full_range < last_range )
               fico_key2 = fico_key
             end
