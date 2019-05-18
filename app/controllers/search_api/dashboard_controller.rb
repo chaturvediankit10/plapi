@@ -407,12 +407,10 @@ class SearchApi::DashboardController < ApplicationController
       end
     end
     if arm_programs.present?
-      term_programs = calculate_base_rate_of_selected_programs(term_programs)
       arm_ids = arm_programs.pluck(:id)
       arm_programs = Program.where(id: arm_ids).where(@filter_data.except(:term))
     end
     if term_programs.present?
-      term_programs = calculate_base_rate_of_selected_programs(term_programs)
       term_ids = term_programs.pluck(:id)
       term_programs = Program.where(id: term_ids).where(@filter_data.except(:arm_basic, :arm_advanced, :arm_benchmark, :arm_margin, :term))
     end
