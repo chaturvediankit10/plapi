@@ -214,6 +214,41 @@
             </div>
           </div>
           <div class="row">
+            <div class="col-md-7">
+              <div class="program-panel panel-basic">
+                <div class="input-grp"><h5>Points / Fees </h5></div>
+                <div class="row panel-body">
+                  <div class="col-md-12">
+                    <div class="radio-boxes">
+                      <div class="radio">
+                        <label class="radio-bx">
+                          <%= radio_button_tag 'point', 'No-Point', params[:point]=='No-Point' ? true : true %> No fees, no points
+                          <span class="checkmark"></span>
+                        </label>
+                      </div>
+                      <div class="radio">
+                        <label class="radio-bx">
+                          <%= radio_button_tag 'point', '0', params[:point]=='0' ? true : false %> 0 point
+                          <span class="checkmark"></span>
+                        </label>
+                      </div>
+                      <div class="radio">
+                        <label class="radio-bx">
+                          <%= radio_button_tag 'point', '1', params[:point]=='1' ? true : false %> 1 point
+                          <span class="checkmark"></span>
+                        </label>
+                      </div>
+                      <div class="radio">
+                        <label class="radio-bx">
+                          <%= radio_button_tag 'point', '2', params[:point]=='2' ? true : false%> 2 points
+                          <span class="checkmark"></span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="col-md-2">
               <div class="form-group">
                 <div class="checkbox">
@@ -338,35 +373,6 @@
               </div>
             </div>
           </div>
-          <div class="row">
-            <div class="col-md-4">
-              <div class="form-group">
-                <label>Points / Fees</label>
-                <div class="radio-boxes">
-                  <div class="radio">
-                    <label>
-                      <%= radio_button_tag 'point', 'No-Point', params[:point]=='No-Point' ? true : false %> No fees, No points
-                    </label>
-                  </div>
-                  <div class="radio">
-                    <label>
-                      <%= radio_button_tag 'point', '0', params[:point]=='0' ? true : false %> 0 points
-                    </label>
-                  </div>
-                  <div class="radio">
-                    <label>
-                      <%= radio_button_tag 'point', '1', params[:point]=='1' ? true : false %> 1 points
-                    </label>
-                  </div>
-                  <div class="radio">
-                    <label>
-                      <%= radio_button_tag 'point', '2', params[:point]=='2' ? true : false%> 2 points
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
       <div class="row">
@@ -395,13 +401,13 @@
                 <th>Bank Name</th>
                 <th>Loan Category</th>
                 <th>Program Category</th>
-                <th>Program Name</th>
+                <th width="140">Program Name</th>
+                <th>AIR</th>
+                <th>Final Point</th>
                 <th>Interest Rate</th>
                 <th>Base Point</th>
                 <th>Adjustments</th>
-                <th>Adjustment Names</th>
-                <th>Final Point</th>
-                <th>AIR</th>
+                <th width="300">Adjustment Names</th>
               </tr>
             </thead>
             <tbody>
@@ -413,42 +419,28 @@
                   <td><%= program[:loan_category] %></td>
                   <td><%= program[:program_category] %></td>
                   <td><%= program[:program_name] %></td>
+                  <td><%= number_with_precision(program[:air].to_s, :precision => 3)%></td>
+                  <td><%= number_with_precision(program[:final_rate].sum, :precision => 3) %>
+                  </td>
                   <td><%= @interest %></td>
-                  <% 
-                    base_rate = (program[:base_rate].to_f).round(3).to_s
-                    final_rate = (program[:final_rate].sum).round(3).to_s
-                  %>
-                  <td><%= base_rate.split(".").last.length == 1 ? base_rate + "00" : base_rate.split(".").last.length == 2 ? base_rate + "0" : base_rate %>
+                  <td><%= number_with_precision(program[:base_rate], :precision => 3) %>
                   </td>
                   <td>
-                    <% if (program[:adj_points] == "Adjustment Not Present") %>
-                      <%#= program[:adj_points] %>
-                    <% else %>
-                      <%if program[:adj_points].present? %>
-                      <%= program[:adj_points].map{|a| number_with_precision(a.round(3), :precision => 3)} %>
-                      <%end%>
-                    <% end %>
-                    </td>
+                    <%if program[:adj_points].present? && program[:adj_points] != "Adjustment Not Present"%>
+                    <%= program[:adj_points].map{|a| number_with_precision(a.round(3), :precision => 3)} %>
+                    <%end%>
+                  </td>
                   <td>
                     <%
-                      if program[:adj_primary_key] == "Adjustment Not Present"
-                        %>
-                          <%#= program[:adj_primary_key] %>
-                        <%
-                      else
-                        if program[:adj_primary_key].present?
-                          program[:adj_primary_key].each_with_index do |key, index|
-                            %>
-                              <%= index+1 %>. <%= key %><br/>
-                            <%
-                          end
+                      if program[:adj_primary_key].present? && program[:adj_primary_key] != "Adjustment Not Present"
+                        program[:adj_primary_key].each_with_index do |key, index|
+                          %>
+                            <p class="table-break-text"><%= index+1 %>. <%= key %></p>
+                          <%
                         end
                       end
                     %>
                   </td>
-                  <td><%= number_with_precision(final_rate, :precision => 3)%>
-                  </td>
-                  <td><%= number_with_precision(program[:air].to_s, :precision => 3)%></td>
                 </tr>
               <%end%>
             <%else%>
@@ -842,9 +834,83 @@
   .result-table {
     height: 500px;
     overflow: scroll;
-    margin-bottom: 50px;
+    margin-bottom: 25px;
   }
   .radio-boxes {
     margin-left: 15px;
   }
+
+
+  .radio-bx {
+  display: block;
+  position: relative;
+  padding-left: 35px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  font-size: 16px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Hide the browser's default radio button */
+.radio-bx input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Create a custom radio button */
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 25px;
+  width: 25px;
+  background-color: #eee;
+  border-radius: 10%;
+}
+
+/* On mouse-over, add a grey background color */
+.radio-bx:hover input ~ .checkmark {
+  background-color: #ccc;
+}
+
+/* When the radio button is checked, add a blue background */
+.radio-bx input:checked ~ .checkmark {
+  background-color: #2196F3;
+}
+
+/* Create the indicator (the dot/circle - hidden when not checked) */
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+/* Show the indicator (dot/circle) when checked */
+.radio-bx input:checked ~ .checkmark:after {
+  display: block;
+}
+
+/* Style the indicator (dot/circle) */
+.radio-bx .checkmark:after {
+  left: 9px;
+  top: 5px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  -webkit-transform: rotate(45deg);
+  -ms-transform: rotate(45deg);
+  transform: rotate(45deg);
+}
+
+.result-table .table-break-text {
+  /*word-break: break-all;*/
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: manual;
+}
 </style>
