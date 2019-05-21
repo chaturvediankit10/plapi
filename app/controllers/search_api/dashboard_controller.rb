@@ -74,6 +74,7 @@ class SearchApi::DashboardController < ApplicationController
   def set_default_values_without_submition
     @filter_not_nil[:term] = nil
     @filter_not_nil[:arm_basic] = nil
+    @filter_not_nil[:arm_caps] = nil
     @filter_not_nil[:arm_advanced] = nil
     @filter_not_nil[:arm_benchmark] = nil
     @filter_not_nil[:arm_margin] = nil
@@ -86,7 +87,8 @@ class SearchApi::DashboardController < ApplicationController
 
   def set_default
     @term_list = (Program.pluck(:term).reject(&:blank?).uniq.map{|n| n if n.to_s.length < 3}.reject(&:blank?).push(5,10,15,20,25,30).uniq.sort).map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
-    @arm_advanced_list = Program.pluck(:arm_advanced).push("3-2-5").uniq.compact.reject { |c| c.empty? }.map{|c| [c]}
+    @arm_advanced_list = Program.pluck(:arm_advanced).push("5-5").uniq.compact.reject { |c| c.empty? }.map{|c| [c]}
+    @arm_caps_list = Program.pluck(:arm_caps).push("3-2-5").uniq.compact.reject { |c| c.empty? }.map{|c| [c]}
     @base_rate = 0.0
     @filter_data = {}
     @filter_not_nil = {}
@@ -103,6 +105,7 @@ class SearchApi::DashboardController < ApplicationController
     @freddie_mac_product = "Home Possible"
     @arm_basic = "5"
     @arm_advanced = "1-1-5"
+    @arm_caps = "5-5"
     @program_category = "6900"
     @property_type = "1 Unit"
     @financing_type = "Subordinate Financing"
@@ -241,6 +244,17 @@ class SearchApi::DashboardController < ApplicationController
     end
   end
 
+  def set_arm_caps
+    if params[:arm_caps].present?
+      if params[:arm_caps] == "All"
+        @filter_not_nil[:arm_caps] = nil
+      else
+        @arm_caps = params[:arm_caps]
+        @filter_data[:arm_caps] = params[:arm_caps]
+      end
+    end
+  end
+
   def set_arm_benchmark
     if params[:arm_benchmark].present?
       if params[:arm_benchmark] == "All"
@@ -280,6 +294,7 @@ class SearchApi::DashboardController < ApplicationController
         set_term
         set_arm_basic
         set_arm_advanced
+        set_arm_caps
         set_arm_benchmark
         set_arm_margin
       else
@@ -288,6 +303,7 @@ class SearchApi::DashboardController < ApplicationController
           set_flag_loan_type(false)
           set_arm_basic
           set_arm_advanced
+          set_arm_caps
           set_arm_benchmark
           set_arm_margin
         end
@@ -359,11 +375,12 @@ class SearchApi::DashboardController < ApplicationController
   def search_programs_with_loan_type_all
     term_programs = []
     arm_programs = []
-    if (@filter_not_nil.keys & [:arm_basic, :arm_advanced, :arm_margin, :arm_benchmark, :term]).any?
+    if (@filter_not_nil.keys & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark, :term]).any?
         term_programs = Program.where.not(loan_type: "ARM")
         arm_programs1 = Program.where(loan_type: "ARM")
         arm_basic_programs  = []
         arm_advanced_programs = []
+        arm_caps_programs = []
         arm_margin_programs = []
         arm_benchmark_programs  = []
         if (@filter_not_nil.keys.include?(:arm_basic))
@@ -372,18 +389,21 @@ class SearchApi::DashboardController < ApplicationController
         if (@filter_not_nil.keys.include?(:arm_advanced))
           arm_advanced_programs = arm_programs1.where.not(arm_advanced: nil)
         end
+        if (@filter_not_nil.keys.include?(:arm_caps))
+          arm_caps_programs = arm_programs1.where.not(arm_caps: nil)
+        end
         if (@filter_not_nil.keys.include?(:arm_margin))
           arm_margin_programs = arm_programs1.where.not(arm_margin: nil)
         end
         if (@filter_not_nil.keys.include?(:arm_benchmark))
           arm_benchmark_programs = arm_programs1.where.not(arm_benchmark: nil)
         end
-      arm_programs = (arm_basic_programs + arm_advanced_programs + arm_margin_programs + arm_benchmark_programs).uniq
+      arm_programs = (arm_basic_programs + arm_advanced_programs + arm_margin_programs + arm_benchmark_programs + arm_caps_programs).uniq
     else
       if (@filter_not_nil.keys.include?(:term))
         term_programs = Program.where.not(loan_type: "ARM")
       else
-        if (@filter_not_nil.keys.include?(:arm_basic || :arm_advanced || :arm_margin || :arm_benchmark))
+        if (@filter_not_nil.keys.include?(:arm_basic || :arm_advanced || :arm_margin || :arm_benchmark || :arm_caps))
           arm_programs = Program.where(loan_type: "ARM")
         else
           term_programs = Program.where.not(loan_type: "ARM")
@@ -392,16 +412,16 @@ class SearchApi::DashboardController < ApplicationController
       end
     end
 
-    if (@filter_data.keys & [:term] & [:arm_basic, :arm_advanced, :arm_margin, :arm_benchmark, :term]).any?
-        term_programs1 = Program.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_benchmark, :arm_margin, :term))
+    if (@filter_data.keys & [:term] & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark, :term]).any?
+        term_programs1 = Program.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
         term_programs = find_programs_on_term_based(term_programs1, @filter_data[:term])
         arm_programs = Program.where(@filter_data.except(:term))
     else
       if (@filter_data.keys & [:term]).any?
-        term_programs1 = Program.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_benchmark, :arm_margin, :term))
+        term_programs1 = Program.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
         term_programs = find_programs_on_term_based(term_programs1, @filter_data[:term])
       else
-        if (@filter_data.keys & [:arm_basic, :arm_advanced, :arm_margin, :arm_benchmark]).any?
+        if (@filter_data.keys & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark]).any?
           arm_programs = Program.where(@filter_data.except(:term))
         end
       end
@@ -412,7 +432,7 @@ class SearchApi::DashboardController < ApplicationController
     end
     if term_programs.present?
       term_ids = term_programs.pluck(:id)
-      term_programs = Program.where(id: term_ids).where(@filter_data.except(:arm_basic, :arm_advanced, :arm_benchmark, :arm_margin, :term))
+      term_programs = Program.where(id: term_ids).where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
     end
     
     total_searched_program1 = calculate_base_rate_of_selected_programs((term_programs + arm_programs).uniq)
@@ -438,7 +458,7 @@ class SearchApi::DashboardController < ApplicationController
 
     @result= []
     if total_searched_program.present?
-      @result = find_adjustments_by_searched_programs(total_searched_program, @lock_period, @arm_basic, @arm_advanced, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
+      @result = find_adjustments_by_searched_programs(total_searched_program, @lock_period, @arm_basic, @arm_advanced, @arm_caps, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
     end
   end
 
@@ -479,7 +499,7 @@ class SearchApi::DashboardController < ApplicationController
       end
       @result= []
       if @programs.present?
-        @result = find_adjustments_by_searched_programs(@programs, @lock_period, @arm_basic, @arm_advanced, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
+        @result = find_adjustments_by_searched_programs(@programs, @lock_period, @arm_basic, @arm_advanced, @arm_caps, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
       end
     end
   end
@@ -493,7 +513,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   # concer code for input api
-  def find_adjustments_by_searched_programs(programs, value_lock_period, value_arm_basic, value_arm_advanced, value_fannie_mae_product, value_freddie_mac_product, value_loan_purpose, value_program_category, value_property_type, value_financing_type, value_premium_type, value_refinance_option, value_misc_adjuster, value_state, value_loan_type, value_loan_size, value_result, value_interest, value_loan_amount, value_ltv, value_cltv, value_term, value_credit_score, value_dti)
+  def find_adjustments_by_searched_programs(programs, value_lock_period, value_arm_basic, value_arm_advanced, value_arm_caps, value_fannie_mae_product, value_freddie_mac_product, value_loan_purpose, value_program_category, value_property_type, value_financing_type, value_premium_type, value_refinance_option, value_misc_adjuster, value_state, value_loan_type, value_loan_size, value_result, value_interest, value_loan_amount, value_ltv, value_cltv, value_term, value_credit_score, value_dti)
     hash_obj = {
       :id => "",
       :air => "",
@@ -515,6 +535,7 @@ class SearchApi::DashboardController < ApplicationController
       :loan_purpose => "",
       :arm_basic => "",
       :arm_advanced => "",
+      :arm_caps => "",
       :loan_size => "",
       :fannie_mae_product => "",
       :freddie_mac_product => "",
@@ -547,6 +568,7 @@ class SearchApi::DashboardController < ApplicationController
       hash_obj[:loan_purpose] = pro.loan_purpose
       hash_obj[:arm_basic] = pro.arm_basic
       hash_obj[:arm_advanced] = pro.arm_advanced
+      hash_obj[:arm_caps] = pro.arm_caps
       hash_obj[:loan_size] = pro.loan_size
       hash_obj[:fannie_mae_product] = pro.fannie_mae_product
       hash_obj[:freddie_mac_product] = pro.freddie_mac_product
@@ -571,6 +593,7 @@ class SearchApi::DashboardController < ApplicationController
           value_loan_type = pro.loan_type
           value_arm_basic = pro.arm_basic
           value_arm_advanced = pro.arm_advanced
+          value_arm_caps = pro.arm_caps
           value_fannie_mae_product = pro.fannie_mae_product
           value_freddie_mac_product = pro.freddie_mac_product
           value_loan_purpose = pro.loan_purpose
@@ -621,6 +644,16 @@ class SearchApi::DashboardController < ApplicationController
                     begin
                       if adj.data[first_key][value_arm_advanced].present?
                         adj_key_hash[key_index] = value_arm_advanced
+                      else
+                        break
+                      end
+                    rescue Exception
+                    end
+                  end
+                  if key_name == "ArmCaps"
+                    begin
+                      if adj.data[first_key][value_arm_caps].present?
+                        adj_key_hash[key_index] = value_arm_caps
                       else
                         break
                       end
@@ -886,6 +919,16 @@ class SearchApi::DashboardController < ApplicationController
                     begin
                       if adj.data[first_key][adj_key_hash[key_index-1]][value_arm_advanced].present?
                         adj_key_hash[key_index] = value_arm_advanced
+                      else
+                        break
+                      end
+                    rescue Exception
+                    end
+                  end
+                  if key_name == "ArmCaps"
+                    begin
+                      if adj.data[first_key][adj_key_hash[key_index-1]][value_arm_caps].present?
+                        adj_key_hash[key_index] = value_arm_caps
                       else
                         break
                       end
@@ -1158,6 +1201,16 @@ class SearchApi::DashboardController < ApplicationController
                     rescue Exception
                     end
                   end
+                  if key_name == "ArmCaps"
+                    begin
+                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_caps].present?
+                        adj_key_hash[key_index] = value_arm_caps
+                      else
+                        break
+                      end
+                    rescue Exception
+                    end
+                  end
                   if key_name == "FannieMaeProduct"
                     begin
                       if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_fannie_mae_product].present?
@@ -1421,6 +1474,16 @@ class SearchApi::DashboardController < ApplicationController
                     rescue Exception
                     end
                   end
+                  if key_name == "ArmCaps"
+                    begin
+                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_caps].present?
+                        adj_key_hash[key_index] = value_arm_caps
+                      else
+                        break
+                      end
+                    rescue Exception
+                    end
+                  end
                   if key_name == "FannieMaeProduct"
                     begin
                       if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_fannie_mae_product].present?
@@ -1678,6 +1741,16 @@ class SearchApi::DashboardController < ApplicationController
                     begin
                       if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_advanced].present?
                         adj_key_hash[key_index] = value_arm_advanced
+                      else
+                        break
+                      end
+                    rescue Exception
+                    end
+                  end
+                  if key_name == "ArmCaps"
+                    begin
+                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_caps].present?
+                        adj_key_hash[key_index] = value_arm_caps
                       else
                         break
                       end
@@ -1948,6 +2021,16 @@ class SearchApi::DashboardController < ApplicationController
                     rescue Exception
                     end
                   end
+                  if key_name == "ArmCaps"
+                    begin
+                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_caps].present?
+                        adj_key_hash[key_index] = value_arm_caps
+                      else
+                        break
+                      end
+                    rescue Exception
+                    end
+                  end
                   if key_name == "FannieMaeProduct"
                     begin
                       if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_fannie_mae_product].present?
@@ -2206,6 +2289,16 @@ class SearchApi::DashboardController < ApplicationController
                     begin
                       if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_advanced].present?
                         adj_key_hash[key_index] = value_arm_advanced
+                      else
+                        break
+                      end
+                    rescue Exception
+                    end
+                  end
+                  if key_name == "ArmCaps"
+                    begin
+                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_caps].present?
+                        adj_key_hash[key_index] = value_arm_caps
                       else
                         break
                       end
@@ -2591,6 +2684,7 @@ class SearchApi::DashboardController < ApplicationController
         :loan_purpose => "",
         :arm_basic => "",
         :arm_advanced => "",
+        :arm_caps => "",
         :loan_size => "",
         :fannie_mae_product => "",
         :freddie_mac_product => "",

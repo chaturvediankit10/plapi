@@ -100,6 +100,12 @@
                     </div>
                     <div class="col-md-6 arm-basic">
                       <div class="form-group">
+                        <label>ARM Caps</label>
+                        <%= select_tag 'arm_caps', options_for_select( @arm_caps_list.flatten.sort_by!{ |m| m.downcase }.prepend(["All"]), (params[:arm_caps] rescue nil)), { prompt: 'Select ARM Caps', :class=> "form-control"} %>
+                      </div>
+                    </div>
+                    <div class="col-md-6 arm-basic">
+                      <div class="form-group">
                         <label>ARM Advanced</label>
                         <%= select_tag 'arm_advanced', options_for_select( @arm_advanced_list.flatten.sort_by!{ |m| m.downcase }.prepend(["All"]), (params[:arm_advanced] rescue nil)), { prompt: 'Select ARM Advanced', :class=> "form-control"} %>
                       </div>
@@ -546,6 +552,7 @@
       $('#arm_benchmark').val('All')
       $('#arm_margin').val('All')
       $('#arm_advanced').val('All')
+      $('#arm_caps').val('All')
       $('#arm_basic').val('5/1')
     }
 
@@ -554,6 +561,7 @@
       $('#arm_benchmark').val('All')
       $('#arm_margin').val('All')
       $('#arm_advanced').val('All')
+      $('#arm_caps').val('All')
       $('#arm_basic').val('All')
     }
 
@@ -799,6 +807,7 @@
         $('#arm_benchmark').val('All')
         $('#arm_margin').val('All')
         $('#arm_advanced').val('All')
+        $('#arm_caps').val('All')
         $('#arm_basic').val('5/1')
         $(".arm-basic").hide();
         $(".term").show();
