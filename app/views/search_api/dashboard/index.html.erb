@@ -447,7 +447,7 @@
                       if program[:adj_primary_key].present? && program[:adj_primary_key] != "Adjustment Not Present"
                         program[:adj_primary_key].each_with_index do |key, index|
                           %>
-                            <p class="table-break-text"><%= index+1 %>.<%= key %></p>
+                            <p class="table-break-text"><%= index+1 %>.<%= key %> <%= program[:cell_number][index]%></p>
                           <%
                         end
                       end
@@ -885,6 +885,7 @@
   width: 20px;
   background-color: #eee;
   border-radius: 10%;
+  outline: 1px solid #C0C0C0;
 }
 
 /* On mouse-over, add a grey background color */
@@ -914,7 +915,7 @@
   left: 7px;
   top: 4px;
   width: 5px;
-  height: 10px;
+  height: 12px;
   border: solid white;
   border-width: 0 3px 3px 0;
   -webkit-transform: rotate(45deg);
