@@ -546,7 +546,8 @@ class SearchApi::DashboardController < ApplicationController
       :base_rate => 0.0,
       :adj_points => [],
       :adj_primary_key => [],
-      :final_rate => []
+      :final_rate => [],
+      :cell_number=>[]
     }
     programs.each do |pro|
       hash_obj[:id] = pro.id
@@ -616,7 +617,6 @@ class SearchApi::DashboardController < ApplicationController
             first_key = adj.data.keys.first
             key_list = first_key.split("/")
             adj_key_hash = {}
-
             key_list.each_with_index do |key_name, key_index|
               if(Adjustment::INPUT_VALUES.include?(key_name))
                 if key_index==0
@@ -2544,43 +2544,36 @@ class SearchApi::DashboardController < ApplicationController
               else
                 if key_index==0
                   if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj.data[first_key]["true"]
                     adj_key_hash[key_index] = "true"
                   end
                 end
                 if key_index==1
                   if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj.data[first_key][adj_key_hash[key_index-1]]["true"]
                     adj_key_hash[key_index] = "true"
                   end
                 end
                 if key_index==2
                   if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]["true"]
                     adj_key_hash[key_index] = "true"
                   end
                 end
                 if key_index==3
                   if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]["true"]
                     adj_key_hash[key_index] = "true"
                   end
                 end
                 if key_index==4
                   if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]["true"]
                     adj_key_hash[key_index] = "true"
                   end
                 end
                 if key_index==5
                   if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]["true"]
                     adj_key_hash[key_index] = "true"
                   end
                 end
                 if key_index==6
                   if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]["true"]
                     adj_key_hash[key_index] = "true"
                   end
                 end
@@ -2593,6 +2586,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
                 end
               end
               if hash_key==1 && adj_key_hash.keys.count-1==hash_key
@@ -2601,6 +2595,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
                 end
               end
               if hash_key==2 && adj_key_hash.keys.count-1==hash_key
@@ -2609,6 +2604,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
                 end
               end
               if hash_key==3 && adj_key_hash.keys.count-1==hash_key
@@ -2617,6 +2613,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
                 end
               end
               if hash_key==4 && adj_key_hash.keys.count-1==hash_key
@@ -2625,6 +2622,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
                 end
               end
               if hash_key==5 && adj_key_hash.keys.count-1==hash_key
@@ -2633,6 +2631,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
                 end
               end
               if hash_key==6 && adj_key_hash.keys.count-1==hash_key
@@ -2641,6 +2640,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
                 end
               end
             end
@@ -2651,17 +2651,12 @@ class SearchApi::DashboardController < ApplicationController
         end
       end
       if hash_obj[:adj_points].present?
-        # hash_obj[:final_rate] << value_interest.to_f
         if params[:point].present? && params[:point] != "No-Point"
           hash_obj[:air] = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], params[:point].to_i)
         end
-        hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f))
-        value_result << hash_obj
-      else
-        # hash_obj[:final_rate] << value_interest.to_f
-        hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f))
-        value_result << hash_obj
       end
+      hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f))
+      value_result << hash_obj
       
       hash_obj = {
         :id => "",
@@ -2695,7 +2690,8 @@ class SearchApi::DashboardController < ApplicationController
         :base_rate => 0.0,
         :adj_points => [],
         :adj_primary_key => [],
-        :final_rate => []
+        :final_rate => [],
+        :cell_number=>[]
       }
 
     end
@@ -2703,6 +2699,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def loan_size_key_of_adjustment(loan_size_keys, value_loan_size)
+    loan_size_keys.delete("cell_number")
     loan_size_key2 = ''
     if (loan_size_keys & value_loan_size.split("&")).present?
       loan_size_key2 = (value_loan_size.split("&") & loan_size_keys).first
@@ -2711,6 +2708,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def loan_amount_key_of_adjustment(loan_amount_keys, value_loan_amount)
+    loan_amount_keys.delete("cell_number")
     loan_amount_key2 = ''
     if value_loan_amount.include?("-")
       first_range = value_loan_amount.split("-").first.strip.to_i
@@ -2770,6 +2768,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def ltv_key_of_adjustment(ltv_keys, value_ltv)
+    ltv_keys.delete("cell_number")
     ltv_key2 = ''
     ltv_keys.each do |ltv_key|
       if (ltv_key.include?("Any") || ltv_key.include?("All"))
@@ -2808,6 +2807,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def cltv_key_of_adjustment(cltv_keys, value_cltv)
+    cltv_keys.delete("cell_number")
     cltv_key2 = ''
     cltv_keys.each do |cltv_key|
       if (cltv_key.include?("Any") || cltv_key.include?("All"))
@@ -2846,6 +2846,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def term_key_of_adjustment(term_keys, value_term)
+    term_keys.delete("cell_number")
     term_key2 = ''
     if value_term == "All"
       term_key2 = term_keys.first
@@ -2909,6 +2910,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def fico_key_of_adjustment(fico_keys, value_credit_score)
+    fico_keys.delete("cell_number")
     fico_key2 = ''
     fico_keys.each do |fico_key|
       if (fico_key.include?("Any") || fico_key.include?("All"))
@@ -2945,6 +2947,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def dti_key_of_adjustment(dti_keys, value_dti)
+    dti_keys.delete("cell_number")
     dti_key_2 = ''
     dti_keys.each do |dti_key|
       if dti_key == value_dti
