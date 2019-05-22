@@ -50,15 +50,19 @@
                       <div class="row">
                         <div class="col-md-4">
                           <div class="form-group">
-                            <div class="checkbox">
-                              <label><%= check_box_tag 'streamline', 'streamline', params[:streamline].present? %> Streamline</label>
+                            <div class="checkbox radio">
+                              <label class="radio-bx"><%= check_box_tag 'streamline', 'streamline', params[:streamline].present? %> Streamline
+                              <span class="checkmark"></span>
+                              </label>
                             </div>
                           </div>
                         </div>
                         <div class="col-md-4">
                           <div class="form-group">
-                            <div class="checkbox">
-                              <label> <%= check_box_tag 'fha', 'fha', params[:fha].present? %> FHA</label>
+                            <div class="checkbox radio">
+                              <label class="radio-bx"> <%= check_box_tag 'fha', 'fha', params[:fha].present? %> FHA
+                                <span class="checkmark"></span>
+                              </label>
                             </div>
                           </div>
                         </div>
@@ -66,8 +70,10 @@
                       <div class="row">
                         <div class="col-md-12">
                           <div class="form-group">
-                            <div class="checkbox">
-                              <label><%= check_box_tag 'va', 'va', params[:va].present? %> VA</label>
+                            <div class="checkbox radio">
+                              <label class="radio-bx"><%= check_box_tag 'va', 'va', params[:va].present? %> VA
+                                <span class="checkmark"></span>
+                              </label>
                             </div>
                           </div>
                         </div>
@@ -75,8 +81,10 @@
                       <div class="row">
                         <div class="col-md-12">
                           <div class="form-group">
-                            <div class="checkbox">
-                              <label><%= check_box_tag 'usda', 'usda', params[:usda].present? %> USDA</label>
+                            <div class="checkbox radio">
+                              <label class="radio-bx"><%= check_box_tag 'usda', 'usda', params[:usda].present? %> USDA
+                                <span class="checkmark"></span>
+                              </label>
                             </div>
                           </div>
                         </div>
@@ -118,8 +126,10 @@
                   </div>
                 </div>
                 <div class="form-group">
-                  <div class="checkbox">
-                    <label><%= check_box_tag 'full_doc', 'full_doc', params[:full_doc].present? %> Full Doc</label>
+                  <div class="checkbox radio">
+                    <label class="radio-bx"><%= check_box_tag 'full_doc', 'full_doc', params[:full_doc].present? %> Full Doc
+                      <span class="checkmark"></span>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -213,13 +223,17 @@
                   <div class="row panel-body">
                     <div class="row col-md-12">
                       <div class="col-md-4">
-                        <div class="checkbox">
-                          <label> <%= check_box_tag 'fannie_mae', 'fannie_mae', params[:fannie_mae].present? %> Fannie Mae</label>
+                        <div class="checkbox radio">
+                          <label class="radio-bx"> <%= check_box_tag 'fannie_mae', 'fannie_mae', params[:fannie_mae].present? %> Fannie Mae
+                            <span class="checkmark"></span>
+                          </label>
                         </div>
                       </div>
                       <div class="col-md-4">
-                        <div class="checkbox">
-                          <label> <%= check_box_tag 'fannie_mae_du', 'fannie_mae_du', params[:fannie_mae_du].present? %> Fannie Mae DU</label>
+                        <div class="checkbox radio">
+                          <label class="radio-bx"> <%= check_box_tag 'fannie_mae_du', 'fannie_mae_du', params[:fannie_mae_du].present? %> Fannie Mae DU
+                            <span class="checkmark"></span>
+                          </label>
                         </div>
                       </div>
                       <div class="col-md-4">
@@ -230,13 +244,17 @@
                     </div>
                     <div class="row col-md-12">
                       <div class="col-md-4">
-                        <div class="checkbox">
-                          <label> <%= check_box_tag 'freddie_mac', 'freddie_mac', params[:freddie_mac].present? %> Freddie Mac</label>
+                        <div class="checkbox radio">
+                          <label class="radio-bx"> <%= check_box_tag 'freddie_mac', 'freddie_mac', params[:freddie_mac].present? %> Freddie Mac
+                            <span class="checkmark"></span>
+                          </label>
                         </div>
                       </div>
                       <div class="col-md-4">
-                        <div class="checkbox">
-                          <label> <%= check_box_tag 'freddie_mac_lp', 'freddie_mac_lp', params[:freddie_mac_lp].present? %> Freddie Mac LP</label>
+                        <div class="checkbox radio">
+                          <label class="radio-bx"> <%= check_box_tag 'freddie_mac_lp', 'freddie_mac_lp', params[:freddie_mac_lp].present? %> Freddie Mac LP
+                            <span class="checkmark"></span>
+                          </label>
                         </div>
                       </div>
                       <div class="col-md-4">
@@ -429,7 +447,7 @@
                       if program[:adj_primary_key].present? && program[:adj_primary_key] != "Adjustment Not Present"
                         program[:adj_primary_key].each_with_index do |key, index|
                           %>
-                            <p class="table-break-text"><%= index+1 %>. <%= key %></p>
+                            <p class="table-break-text"><%= index+1 %>.<%= key %></p>
                           <%
                         end
                       end
@@ -863,8 +881,8 @@
   position: absolute;
   top: 0;
   left: 0;
-  height: 25px;
-  width: 25px;
+  height: 20px;
+  width: 20px;
   background-color: #eee;
   border-radius: 10%;
 }
@@ -893,8 +911,8 @@
 
 /* Style the indicator (dot/circle) */
 .radio-bx .checkmark:after {
-  left: 9px;
-  top: 5px;
+  left: 7px;
+  top: 4px;
   width: 5px;
   height: 10px;
   border: solid white;
