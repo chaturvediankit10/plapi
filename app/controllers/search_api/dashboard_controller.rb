@@ -2586,7 +2586,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
                 end
               end
               if hash_key==1 && adj_key_hash.keys.count-1==hash_key
@@ -2595,7 +2595,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
                 end
               end
               if hash_key==2 && adj_key_hash.keys.count-1==hash_key
@@ -2604,7 +2604,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
                 end
               end
               if hash_key==3 && adj_key_hash.keys.count-1==hash_key
@@ -2613,7 +2613,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
                 end
               end
               if hash_key==4 && adj_key_hash.keys.count-1==hash_key
@@ -2622,7 +2622,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
                 end
               end
               if hash_key==5 && adj_key_hash.keys.count-1==hash_key
@@ -2631,7 +2631,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
                 end
               end
               if hash_key==6 && adj_key_hash.keys.count-1==hash_key
@@ -2640,7 +2640,7 @@ class SearchApi::DashboardController < ApplicationController
                   hash_obj[:adj_points] << point.to_f
                   hash_obj[:final_rate] << point.to_f
                   hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"].join(', ') if adj.data[first_key]["cell_number"].present?
+                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
                 end
               end
             end
@@ -2651,7 +2651,7 @@ class SearchApi::DashboardController < ApplicationController
         end
       end
       if hash_obj[:adj_points].present?
-        if params[:point].present? && params[:point] != "No-Point"
+        if params[:point].present?
           hash_obj[:air] = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], params[:point].to_i)
         end
       end

@@ -99,12 +99,6 @@
                       <div class="radio-boxes">
                         <div class="radio">
                           <label class="radio-bx">
-                            <%= radio_button_tag 'point', 'No-Point', params[:point]=='No-Point' ? true : true %> No fees, no points
-                            <span class="checkmark"></span>
-                          </label>
-                        </div>
-                        <div class="radio">
-                          <label class="radio-bx">
                             <%= radio_button_tag 'point', '0', params[:point]=='0' ? true : false %> 0 point
                             <span class="checkmark"></span>
                           </label>
@@ -413,13 +407,14 @@
                 <th style="width: 5%;">Bank Name</th>
                 <th style="width: 5%;">Loan Category</th>
                 <th style="width: 5%;">Program Category</th>
-                <th style="width: 20%;">Program Name</th>
+                <th style="width: 15%;">Program Name</th>
                 <th style="width: 5%;">AIR</th>
                 <th style="width: 5%;">Final Point</th>
                 <th style="width: 5%;">Interest Rate</th>
                 <th style="width: 5%;">Base Point</th>
                 <th style="width: 5%;">Adjustments</th>
-                <th style="width: 35%;">Adjustment Names</th>
+                <th style="width: 10%;">Adj Table Loc</th>
+                <th style="width: 30%;">Adjustment Table Name</th>
               </tr>
             </thead>
             <tbody>
@@ -439,15 +434,33 @@
                   </td>
                   <td>
                     <%if program[:adj_points].present? && program[:adj_points] != "Adjustment Not Present"%>
-                    <%= program[:adj_points].map{|a| number_with_precision(a.round(3), :precision => 3)} %>
+                    <%
+                      program[:adj_points].each_with_index do |adj_value, index|
+                        %>
+                          <p> <%= number_with_precision(adj_value.round(3), :precision => 3)%></p>
+                        <%
+                      end
+                    %>
+                    <%#= program[:adj_points].map{|a| number_with_precision(a.round(3), :precision => 3)} %>
                     <%end%>
+                  </td>
+                  <td>
+                    <%
+                      if program[:cell_number].present?
+                        program[:cell_number].each_with_index do |key, index|
+                          %>
+                            <p>  <%= key.tr(' ', '')%></p>
+                          <%
+                        end
+                      end
+                    %>
                   </td>
                   <td>
                     <%
                       if program[:adj_primary_key].present? && program[:adj_primary_key] != "Adjustment Not Present"
                         program[:adj_primary_key].each_with_index do |key, index|
                           %>
-                            <p class="table-break-text"><%= index+1 %>.<%= key %> <%= program[:cell_number][index]%></p>
+                            <p class="table-break-text"><%= index+1 %>.<%= key %> </p>
                           <%
                         end
                       end
