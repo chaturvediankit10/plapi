@@ -449,7 +449,7 @@
                       if program[:cell_number].present?
                         program[:cell_number].each_with_index do |key, index|
                           %>
-                            <p>  <%= key.tr(' ', '')%></p>
+                            <p> <%= key.tr(' ', '') if key.present? %></p>
                           <%
                         end
                       end
