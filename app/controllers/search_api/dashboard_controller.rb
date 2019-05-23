@@ -839,7 +839,7 @@ class SearchApi::DashboardController < ApplicationController
                   if key_name == "State"
                     begin
                       if value_state == "All"
-                        first_state_key = adj.data[first_key].keys.first
+                        first_state_key = adj.data[first_key].keys.tap{|e| e.delete("cell_number") }.first
                         if adj.data[first_key][first_state_key].present?
                           adj_key_hash[key_index] = first_state_key
                         else
@@ -1114,7 +1114,7 @@ class SearchApi::DashboardController < ApplicationController
                   if key_name == "State"
                     begin
                       if value_state == "All"
-                        first_state_key = adj.data[first_key][adj_key_hash[key_index-1]].keys.first
+                        first_state_key = adj.data[first_key][adj_key_hash[key_index-1]].keys.tap{|e| e.delete("cell_number") }.first
                         if adj.data[first_key][adj_key_hash[key_index-1]][first_state_key].present?
                           adj_key_hash[key_index] = first_state_key
                         else
@@ -1389,7 +1389,7 @@ class SearchApi::DashboardController < ApplicationController
                   if key_name == "State"
                     begin
                       if value_state == "All"
-                        first_state_key = adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.first
+                        first_state_key = adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.tap{|e| e.delete("cell_number") }.first
                         if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][first_state_key].present?
                           adj_key_hash[key_index] = first_state_key
                         else
@@ -1662,7 +1662,7 @@ class SearchApi::DashboardController < ApplicationController
                   if key_name == "State"
                     begin
                       if value_state == "All"
-                        first_state_key = adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.first
+                        first_state_key = adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.tap{|e| e.delete("cell_number") }.first
                         if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][first_state_key].present?
                           adj_key_hash[key_index] = first_state_key
                         else
@@ -1935,7 +1935,7 @@ class SearchApi::DashboardController < ApplicationController
                   if key_name == "State"
                     begin
                       if value_state == "All"
-                        first_state_key = adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.first
+                        first_state_key = adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.tap{|e| e.delete("cell_number") }.first
                         if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][first_state_key].present?
                           adj_key_hash[key_index] = first_state_key
                         else
@@ -2210,7 +2210,7 @@ class SearchApi::DashboardController < ApplicationController
                   if key_name == "State"
                     begin
                       if value_state == "All"
-                        first_state_key = adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.first
+                        first_state_key = adj.data[first_range_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.tap{|e| e.delete("cell_number") }.first
                         if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][first_state_key].present?
                           adj_key_hash[key_index] = first_state_key
                         else
@@ -2486,7 +2486,7 @@ class SearchApi::DashboardController < ApplicationController
                   if key_name == "State"
                     begin
                       if value_state == "All"
-                        first_state_key = adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.first
+                        first_state_key = adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.tap{|e| e.delete("cell_number") }.first
                         if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][first_state_key].present?
                           adj_key_hash[key_index] = first_state_key
                         else
