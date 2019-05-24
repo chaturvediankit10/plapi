@@ -2993,7 +2993,7 @@ class SearchApi::DashboardController < ApplicationController
     n = term.to_i*12 rescue nil
     monthly_payment = ((r * p) / (1 - ((1 + r) ** (-1 * n)))) rescue nil
 
-    if monthly_payment.is_a?(Float) && monthly_payment.nan?
+    if monthly_payment.present? && monthly_payment.is_a?(Float) && monthly_payment.nan?
       monthly_payment = ''
     end
     return monthly_payment
