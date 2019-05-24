@@ -547,7 +547,8 @@ class SearchApi::DashboardController < ApplicationController
       :adj_points => [],
       :adj_primary_key => [],
       :final_rate => [],
-      :cell_number=>[]
+      :cell_number=>[],
+      :closing_cost => ""
     }
     programs.each do |pro|
       hash_obj[:id] = pro.id
@@ -2650,14 +2651,25 @@ class SearchApi::DashboardController < ApplicationController
           hash_obj[:adj_primary_key] = "Adjustment Not Present"
         end
       end
+      air_values = []
       if hash_obj[:adj_points].present?
+        @point = '0'
         if params[:point].present?
-          hash_obj[:air] = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], params[:point].to_i)
+          @point = params[:point]
         end
+        air_values = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], @point.to_i)
+        hash_obj[:air] = air_values.try(:last).try(:to_f)
       end
-      hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f))
+      hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f)) rescue nil
+
+      loan_amount = (@home_price.to_i - @down_payment.to_i) rescue nil
+
+      hash_obj[:closing_cost] = ((air_values.try(:first).try(:to_f))*loan_amount) rescue nil
+
+      hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
+
       value_result << hash_obj
-      
+
       hash_obj = {
         :id => "",
         :air => "",
@@ -2691,11 +2703,12 @@ class SearchApi::DashboardController < ApplicationController
         :adj_points => [],
         :adj_primary_key => [],
         :final_rate => [],
-        :cell_number=>[]
+        :cell_number=>[],
+        :closing_cost => ""
       }
 
     end
-    return value_result
+    return value_result.sort_by { |h | h[:closing_cost] } || []
   end
 
   def loan_size_key_of_adjustment(loan_size_keys, value_loan_size)
@@ -2958,16 +2971,32 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def adjusted_interest_rate_calculate(pro, adj_points, point)
-    air_key = ''
+    air_key = []
     base_rate_keys = pro.base_rate.keys
     total_adj = adj_points.present? ? adj_points.sum : 0
     yellow_keys = pro.base_rate.values.map{|a| a[@lock_period]}
     orange_keys = yellow_keys.map{|a| (a.to_f + total_adj.to_f).round(3)}
-    air_value = orange_keys.map{|a| a.to_f if a.to_i==point}.compact.min
+    air_value = orange_keys.map{|a| a.to_f if a.to_i == point && a.positive?}.compact.min
     if air_value.present?
-      air_key = base_rate_keys[orange_keys.index(air_value)]
+      air_key << air_value
+      air_key << base_rate_keys[orange_keys.index(air_value)]
+    else
+      air_key << ""
+      air_key << ""
     end
     air_key
+  end
+
+  def calculate_monthly_payment(p, interest, term)
+    monthly_payment = ''
+    r = (interest.to_f/12)/100 rescue nil
+    n = term.to_i*12 rescue nil
+    monthly_payment = ((r * p) / (1 - ((1 + r) ** (-1 * n)))) rescue nil
+
+    if monthly_payment.is_a?(Float) && monthly_payment.nan?
+      monthly_payment = ''
+    end
+    return monthly_payment
   end
 
 end
