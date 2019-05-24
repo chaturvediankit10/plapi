@@ -2989,12 +2989,10 @@ class SearchApi::DashboardController < ApplicationController
 
   def calculate_monthly_payment(p, interest, term)
     monthly_payment = ''
-    r = (interest.to_f/12)/100 rescue nil
-    n = term.to_i*12 rescue nil
-    monthly_payment = ((r * p) / (1 - ((1 + r) ** (-1 * n)))) rescue nil
-
-    if monthly_payment.present? && monthly_payment.is_a?(Float) && monthly_payment.nan?
-      monthly_payment = ''
+    if interest.to_i != 0 && interest.present? && p.present? && term.present?
+      r = (interest.to_f/12)/100 rescue nil
+      n = term.to_i*12 rescue nil
+      monthly_payment = ((r * p) / (1 - ((1 + r) ** (-1 * n)))) rescue nil      
     end
     return monthly_payment
   end
