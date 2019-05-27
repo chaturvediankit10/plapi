@@ -548,7 +548,8 @@ class SearchApi::DashboardController < ApplicationController
       :adj_primary_key => [],
       :final_rate => [],
       :cell_number=>[],
-      :closing_cost => ""
+      :closing_cost => "",
+      :apr => ""
     }
     programs.each do |pro|
       hash_obj[:id] = pro.id
@@ -2660,6 +2661,7 @@ class SearchApi::DashboardController < ApplicationController
         air_values = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], @point.to_i)
         if air_values.try(:last).present?
           hash_obj[:air] = air_values.try(:last).try(:to_f)
+          hash_obj[:apr] = calculate_apr_value(hash_obj[:air])
         else
           hash_obj[:air] = 0.0
         end
@@ -2712,7 +2714,8 @@ class SearchApi::DashboardController < ApplicationController
         :adj_primary_key => [],
         :final_rate => [],
         :cell_number=>[],
-        :closing_cost => ""
+        :closing_cost => "",
+        :apr => ""
       }
 
     end
@@ -3005,6 +3008,10 @@ class SearchApi::DashboardController < ApplicationController
       end
     end
     return monthly_payment
+  end
+
+  def calculate_apr_value(air_value)
+    ( 1 + air_value / 30 ) ** 365 - 1 rescue nil
   end
 
 end
