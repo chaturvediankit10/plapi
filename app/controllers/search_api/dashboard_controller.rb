@@ -516,6 +516,7 @@ class SearchApi::DashboardController < ApplicationController
   def find_adjustments_by_searched_programs(programs, value_lock_period, value_arm_basic, value_arm_advanced, value_arm_caps, value_fannie_mae_product, value_freddie_mac_product, value_loan_purpose, value_program_category, value_property_type, value_financing_type, value_premium_type, value_refinance_option, value_misc_adjuster, value_state, value_loan_type, value_loan_size, value_result, value_interest, value_loan_amount, value_ltv, value_cltv, value_term, value_credit_score, value_dti)
     hash_obj = {
       :id => "",
+      :term => nil,
       :air => 0.0,
       :conforming => "",
       :fannie_mae => "",
@@ -553,6 +554,7 @@ class SearchApi::DashboardController < ApplicationController
     }
     programs.each do |pro|
       hash_obj[:id] = pro.id
+      hash_obj[:term] = pro.term
       hash_obj[:conforming] = pro.conforming
       hash_obj[:fannie_mae] = pro.fannie_mae
       hash_obj[:fannie_mae_home_ready] = pro.fannie_mae_home_ready
@@ -2682,6 +2684,7 @@ class SearchApi::DashboardController < ApplicationController
 
       hash_obj = {
         :id => "",
+        :term => nil,
         :air => 0.0,
         :conforming => "",
         :fannie_mae => "",
