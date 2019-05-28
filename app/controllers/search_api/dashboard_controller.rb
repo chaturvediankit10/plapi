@@ -2722,7 +2722,7 @@ class SearchApi::DashboardController < ApplicationController
     return value_result.sort_by { |h| h[:air] } || []
   end
 
-  def loan_size_key_of_adjustment(loan_size_keys, value_loan_size)
+  deletef loan_size_key_of_adjustment(loan_size_keys, value_loan_size)
     loan_size_keys.delete("cell_number")
     loan_size_key2 = ''
     if (loan_size_keys & value_loan_size.split("&")).present?
