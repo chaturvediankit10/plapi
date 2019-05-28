@@ -516,7 +516,7 @@ class SearchApi::DashboardController < ApplicationController
   def find_adjustments_by_searched_programs(programs, value_lock_period, value_arm_basic, value_arm_advanced, value_arm_caps, value_fannie_mae_product, value_freddie_mac_product, value_loan_purpose, value_program_category, value_property_type, value_financing_type, value_premium_type, value_refinance_option, value_misc_adjuster, value_state, value_loan_type, value_loan_size, value_result, value_interest, value_loan_amount, value_ltv, value_cltv, value_term, value_credit_score, value_dti)
     hash_obj = {
       :id => "",
-      :air => "",
+      :air => 0.0,
       :conforming => "",
       :fannie_mae => "",
       :fannie_mae_home_ready => "",
@@ -548,8 +548,8 @@ class SearchApi::DashboardController < ApplicationController
       :adj_primary_key => [],
       :final_rate => [],
       :cell_number=>[],
-      :closing_cost => "",
-      :apr => ""
+      :closing_cost => 0.0,
+      :apr => 0.0
     }
     programs.each do |pro|
       hash_obj[:id] = pro.id
@@ -2682,7 +2682,7 @@ class SearchApi::DashboardController < ApplicationController
 
       hash_obj = {
         :id => "",
-        :air => "",
+        :air => 0.0,
         :conforming => "",
         :fannie_mae => "",
         :fannie_mae_home_ready => "",
@@ -2714,15 +2714,15 @@ class SearchApi::DashboardController < ApplicationController
         :adj_primary_key => [],
         :final_rate => [],
         :cell_number=>[],
-        :closing_cost => "",
-        :apr => ""
+        :closing_cost => 0.0,
+        :apr => 0.0
       }
 
     end
-    return value_result.sort_by { |h | h[:air] } || []
+    return value_result.sort_by { |h| h[:air] } || []
   end
 
-  def loan_size_key_of_adjustment(loan_size_keys, value_loan_size)
+  deletef loan_size_key_of_adjustment(loan_size_keys, value_loan_size)
     loan_size_keys.delete("cell_number")
     loan_size_key2 = ''
     if (loan_size_keys & value_loan_size.split("&")).present?
@@ -2992,8 +2992,8 @@ class SearchApi::DashboardController < ApplicationController
       air_key << air_value
       air_key << base_rate_keys[orange_keys.index(air_value)]
     else
-      air_key << nil
-      air_key << nil
+      air_key << 0.0
+      air_key << 0.0
     end
     return air_key
   end
