@@ -2719,7 +2719,7 @@ class SearchApi::DashboardController < ApplicationController
       }
 
     end
-    return value_result.sort_by { |h | h[:closing_cost] } || []
+    return value_result.sort_by { |h | h[:air] } || []
   end
 
   def loan_size_key_of_adjustment(loan_size_keys, value_loan_size)
