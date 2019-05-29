@@ -3,15 +3,7 @@ class SearchApi::DashboardController < ApplicationController
   before_action :set_default
 
   def index
-    @banks = Bank.all
-    @all_banks_name = @banks.pluck(:name)
-    if params["commit"].present?
-      set_variable
-    else
-      set_default_values_without_submition
-    end
-    find_base_rate
-    fetch_programs_by_bank(true)
+    list_of_banks_and_programs_with_search_results
   end
 
   def list_of_banks_and_programs_with_search_results
@@ -27,47 +19,31 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def fetch_programs_by_bank(html_type=false)
-    # @all_programs = Program.where("created_at > ?", Time.now.prev_day)
     @all_programs = Program.all
+
+    if params[:bank_name].present?
+      @all_programs = @all_programs.where(bank_name: params[:bank_name]) unless params[:bank_name].eql?('All')
+    end
+
+    if params[:loan_category].present?
+      @all_programs = @all_programs.where(loan_category: params[:loan_category]) unless params[:loan_category].eql?('All')
+    end
+
+    if params[:pro_category].present?
+      @all_programs = @all_programs.where(program_category: params[:pro_category]) unless (params[:pro_category] == "All" || params[:pro_category] == "No Category")
+    end
+
     @program_names = @all_programs.pluck(:program_name).uniq.compact.sort
     @loan_categories = @all_programs.pluck(:loan_category).uniq.compact.sort
     @program_categories = @all_programs.pluck(:program_category).uniq.compact.sort
-    if params[:bank_name].present?
-      if (params[:bank_name] == "All")
-        @program_names = @all_programs.pluck(:program_name).uniq.compact.sort
-        @loan_categories = @all_programs.pluck(:loan_category).uniq.compact.sort
-        @program_categories = @all_programs.pluck(:program_category).uniq.compact.sort
-      else
-        @all_programs = @all_programs.where(bank_name: params[:bank_name])
-        @program_names = @all_programs.pluck(:program_name).uniq.compact.sort
-        @loan_categories = @all_programs.pluck(:loan_category).uniq.compact.sort
-        @program_categories = @all_programs.pluck(:program_category).uniq.compact.sort
-      end
-    end
-    if params[:loan_category].present?
-      if (params[:loan_category] == "All")
-        @program_names = @all_programs.pluck(:program_name).uniq.compact.sort
-        @program_categories = @all_programs.pluck(:program_category).uniq.compact.sort
-      else
-        @all_programs = @all_programs.where(loan_category: params[:loan_category])
-        @program_names = @all_programs.pluck(:program_name).uniq.compact.sort
-        @program_categories = @all_programs.pluck(:program_category).uniq.compact.sort
-      end
-    end
-    if params[:pro_category].present?
-      if (params[:pro_category] == "All" || params[:pro_category] == "No Category")
-        @program_names = @all_programs.pluck(:program_name).uniq.compact.sort
-      else
-        @all_programs = @all_programs.where(program_category: params[:pro_category])
-        @program_names = @all_programs.pluck(:program_name).uniq.compact.sort
-      end
-    end
 
     if @program_categories.present?
       @program_categories.prepend(["All"])
     else
       @program_categories << "No Category"
     end
+
+    # N+1 query, there is unrequired loop, we need to remove that, so that it will load quickly
     render json: {program_list: @program_names.map{ |lc| {name: lc}}, loan_category_list: @loan_categories.map{ |lc| {name: lc}}, pro_category_list: @program_categories.map{ |lc| {name: lc}}} unless html_type
   end
 
@@ -376,86 +352,66 @@ class SearchApi::DashboardController < ApplicationController
     term_programs = []
     arm_programs = []
     if (@filter_not_nil.keys & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark, :term]).any?
-        term_programs = Program.where.not(loan_type: "ARM")
-        arm_programs1 = Program.where(loan_type: "ARM")
-        arm_basic_programs  = []
-        arm_advanced_programs = []
-        arm_caps_programs = []
-        arm_margin_programs = []
-        arm_benchmark_programs  = []
-        if (@filter_not_nil.keys.include?(:arm_basic))
-          arm_basic_programs = arm_programs1.where.not(arm_basic: nil)
+      term_programs = Program.where.not(loan_type: "ARM")
+      arm_all_programs = Program.where(loan_type: "ARM")
+
+      %i[arm_basic arm_advanced arm_caps arm_margin arm_benchmark].each do |term|
+        if (@filter_not_nil.keys.include?(term))
+          arm_programs << arm_all_programs.where.not(term => nil)
         end
-        if (@filter_not_nil.keys.include?(:arm_advanced))
-          arm_advanced_programs = arm_programs1.where.not(arm_advanced: nil)
-        end
-        if (@filter_not_nil.keys.include?(:arm_caps))
-          arm_caps_programs = arm_programs1.where.not(arm_caps: nil)
-        end
-        if (@filter_not_nil.keys.include?(:arm_margin))
-          arm_margin_programs = arm_programs1.where.not(arm_margin: nil)
-        end
-        if (@filter_not_nil.keys.include?(:arm_benchmark))
-          arm_benchmark_programs = arm_programs1.where.not(arm_benchmark: nil)
-        end
-      arm_programs = (arm_basic_programs + arm_advanced_programs + arm_margin_programs + arm_benchmark_programs + arm_caps_programs).uniq
+      end
+      arm_programs = arm_programs.flatten.compact.uniq
     else
       if (@filter_not_nil.keys.include?(:term))
         term_programs = Program.where.not(loan_type: "ARM")
+      elsif (@filter_not_nil.keys.include?(:arm_basic || :arm_advanced || :arm_margin || :arm_benchmark || :arm_caps))
+        arm_programs = Program.where(loan_type: "ARM")
       else
-        if (@filter_not_nil.keys.include?(:arm_basic || :arm_advanced || :arm_margin || :arm_benchmark || :arm_caps))
-          arm_programs = Program.where(loan_type: "ARM")
-        else
-          term_programs = Program.where.not(loan_type: "ARM")
-          arm_programs = Program.where(loan_type: "ARM")
-        end
+        term_programs = Program.where.not(loan_type: "ARM")
+        arm_programs = Program.where(loan_type: "ARM")
       end
     end
-
-    if (@filter_data.keys & [:term] & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark, :term]).any?
-        term_programs1 = Program.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
-        term_programs = find_programs_on_term_based(term_programs1, @filter_data[:term])
+    if (@filter_data.keys & [:term]).any?
+      term_programs1 = Program.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
+      term_programs = find_programs_on_term_based(term_programs1, @filter_data[:term])
+      if (@filter_data.keys & [:term] & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark, :term]).any?
         arm_programs = Program.where(@filter_data.except(:term))
-    else
-      if (@filter_data.keys & [:term]).any?
-        term_programs1 = Program.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
-        term_programs = find_programs_on_term_based(term_programs1, @filter_data[:term])
-      else
-        if (@filter_data.keys & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark]).any?
-          arm_programs = Program.where(@filter_data.except(:term))
-        end
       end
+    elsif (@filter_data.keys & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark]).any?
+      arm_programs = Program.where(@filter_data.except(:term))
     end
     if arm_programs.present?
       arm_ids = arm_programs.pluck(:id)
       arm_programs = Program.where(id: arm_ids).where(@filter_data.except(:term))
+      # arm_programs = arm_programs.where(@filter_data.except(:term))
     end
+
     if term_programs.present?
       term_ids = term_programs.pluck(:id)
       term_programs = Program.where(id: term_ids).where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
+      # term_programs = term_programs.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
     end
-    
     total_searched_program1 = calculate_base_rate_of_selected_programs((term_programs + arm_programs).uniq)
-      total_searched_program = []
+    total_searched_program = []
 
-      if total_searched_program1.present?
-        if params[:loan_size].present?
-          if params[:loan_size] == "All"
-            total_searched_program = total_searched_program1
-          else
-            @loan_size = params[:loan_size]
-            total_searched_program1 = total_searched_program1.map{ |pro| pro if pro.loan_size!=nil}.compact
-            total_searched_program1.each do |pro|
-              if(pro.loan_size.split("&").map{ |l| l.strip }.include?(params[:loan_size]))
-                total_searched_program << pro
-              end
+    if total_searched_program1.present?
+      if params[:loan_size].present?
+        if params[:loan_size] == "All"
+          total_searched_program = total_searched_program1
+        else
+          @loan_size = params[:loan_size]
+          total_searched_program1 = total_searched_program1.where.not(loan_size: nil)
+          # total_searched_program1 = total_searched_program1.map{ |pro| pro if pro.loan_size!=nil}.compact
+          total_searched_program1.each do |pro|
+            if(pro.loan_size.split("&").map{ |l| l.strip }.include?(params[:loan_size]))
+              total_searched_program << pro
             end
           end
-        else
-          total_searched_program = total_searched_program1
         end
+      else
+        total_searched_program = total_searched_program1
       end
-
+    end
     @result= []
     if total_searched_program.present?
       @result = find_adjustments_by_searched_programs(total_searched_program, @lock_period, @arm_basic, @arm_advanced, @arm_caps, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
@@ -514,73 +470,39 @@ class SearchApi::DashboardController < ApplicationController
 
   # concer code for input api
   def find_adjustments_by_searched_programs(programs, value_lock_period, value_arm_basic, value_arm_advanced, value_arm_caps, value_fannie_mae_product, value_freddie_mac_product, value_loan_purpose, value_program_category, value_property_type, value_financing_type, value_premium_type, value_refinance_option, value_misc_adjuster, value_state, value_loan_type, value_loan_size, value_result, value_interest, value_loan_amount, value_ltv, value_cltv, value_term, value_credit_score, value_dti)
+
+    data_hash = {}
+    data_hash['LockDay'] = value_lock_period
+    data_hash['ArmBasic'] = value_arm_basic
+    data_hash['ArmAdvanced'] = value_arm_advanced
+    data_hash['ArmCaps'] = value_arm_caps
+    data_hash['FannieMaeProduct'] = value_fannie_mae_product
+    data_hash['FreddieMacProduct'] = value_freddie_mac_product
+    data_hash['LoanPurpose'] = value_loan_purpose
+    data_hash['ProgramCategory'] = value_program_category
+    data_hash['PropertyType'] = value_property_type
+    data_hash['FinancingType'] = value_financing_type
+    data_hash['PremiumType'] = value_premium_type
+    data_hash['RefinanceOption'] = value_refinance_option
+    data_hash['MiscAdjuster'] = value_misc_adjuster
+    data_hash['LoanType'] = value_loan_type
+    data_hash['LoanAmount'] = value_loan_amount
+    data_hash['LTV'] = value_ltv
+    data_hash['FICO'] = value_credit_score
+    data_hash['MiscAdjuster'] = value_misc_adjuster
+    data_hash['LoanSize'] = value_loan_size
+    data_hash['CLTV'] = value_cltv
+    data_hash['State'] = value_state
+    data_hash['Term'] = value_term
+    data_hash['DTI'] = value_dti
+
     hash_obj = {
-      :id => "",
-      :term => nil,
-      :air => 0.0,
-      :conforming => "",
-      :fannie_mae => "",
-      :fannie_mae_home_ready => "",
-      :freddie_mac => "",
-      :freddie_mac_home_possible => "",
-      :fha => "",
-      :va => "",
-      :usda => "",
-      :streamline => "",
-      :full_doc => "",
-      :loan_category => "",
-      :program_category => "",
-      :bank_name => "",
-      :program_name => "",
-      :loan_type => "",
-      :loan_purpose => "",
-      :arm_basic => "",
-      :arm_advanced => "",
-      :arm_caps => "",
-      :loan_size => "",
-      :fannie_mae_product => "",
-      :freddie_mac_product => "",
-      :fannie_mae_du => "",
-      :freddie_mac_lp => "",
-      :arm_benchmark => "",
-      :arm_margin => "",
-      :base_rate => 0.0,
-      :adj_points => [],
-      :adj_primary_key => [],
-      :final_rate => [],
-      :cell_number=>[],
-      :closing_cost => 0.0,
-      :apr => 0.0
-    }
+                 :id => "", :term => nil, :air => "", :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :apr => 0.0
+               }
+
     programs.each do |pro|
-      hash_obj[:id] = pro.id
-      hash_obj[:term] = pro.term
-      hash_obj[:conforming] = pro.conforming
-      hash_obj[:fannie_mae] = pro.fannie_mae
-      hash_obj[:fannie_mae_home_ready] = pro.fannie_mae_home_ready
-      hash_obj[:freddie_mac] = pro.freddie_mac
-      hash_obj[:freddie_mac_home_possible] = pro.freddie_mac_home_possible
-      hash_obj[:fha] = pro.fha
-      hash_obj[:va] = pro.va
-      hash_obj[:usda] = pro.usda
-      hash_obj[:streamline] = pro.streamline
-      hash_obj[:full_doc] = pro.full_doc
-      hash_obj[:loan_category] = pro.loan_category
-      hash_obj[:program_category] = pro.program_category
-      hash_obj[:bank_name] = pro.bank_name
-      hash_obj[:program_name] = pro.program_name
-      hash_obj[:loan_type] = pro.loan_type
-      hash_obj[:loan_purpose] = pro.loan_purpose
-      hash_obj[:arm_basic] = pro.arm_basic
-      hash_obj[:arm_advanced] = pro.arm_advanced
-      hash_obj[:arm_caps] = pro.arm_caps
-      hash_obj[:loan_size] = pro.loan_size
-      hash_obj[:fannie_mae_product] = pro.fannie_mae_product
-      hash_obj[:freddie_mac_product] = pro.freddie_mac_product
-      hash_obj[:fannie_mae_du] = pro.fannie_mae_du
-      hash_obj[:freddie_mac_lp] = pro.freddie_mac_lp
-      hash_obj[:arm_benchmark] = pro.arm_benchmark
-      hash_obj[:arm_margin] = pro.arm_margin
+      hash_obj.except(:air, :base_rate, :adj_points, :adj_primary_key, :final_rate, :cell_number, :closing_cost, :apr).keys.map{ |key| hash_obj[key.to_sym] = pro.send(key) }
+
       if pro.base_rate.present?
         base_rate_keys = pro.base_rate.keys.map{ |k| ActionController::Base.helpers.number_with_precision(k, :precision => 3)}
 
@@ -595,14 +517,12 @@ class SearchApi::DashboardController < ApplicationController
           else
             hash_obj[:base_rate] = 0.0
           end
-          value_loan_type = pro.loan_type
-          value_arm_basic = pro.arm_basic
-          value_arm_advanced = pro.arm_advanced
-          value_arm_caps = pro.arm_caps
-          value_fannie_mae_product = pro.fannie_mae_product
-          value_freddie_mac_product = pro.freddie_mac_product
-          value_loan_purpose = pro.loan_purpose
-          value_loan_size = pro.loan_size
+
+          %w(LoanType ArmBasic ArmAdvanced ArmCaps FannieMaeProduct FreddieMacProduct LoanPurpose LoanSize).each do |key_name|
+            field_name = key_name&.strip&.underscore
+            data_hash[key_name] = pro.send(field_name)
+          end
+
           pro_term = pro.term
           if (pro_term.to_s.length <=2 )
             value_term = pro_term.to_s
@@ -611,97 +531,45 @@ class SearchApi::DashboardController < ApplicationController
             last = pro_term%100
             value_term = first.to_s+"-"+last.to_s
           end
-
+          data_hash['Term'] = value_term
         end
       end
       if pro.adjustment_ids.present?
-        program_adjustments = pro.adjustments 
+        program_adjustments = pro.adjustments
         if program_adjustments.present?
           program_adjustments.each do |adj|
             first_key = adj.data.keys.first
             key_list = first_key.split("/")
             adj_key_hash = {}
+
+            non_adjustment_input_values = %w(HighBalance Conforming FannieMae FannieMaeHomeReady FreddieMac FreddieMacHomePossible FHA VA USDA Streamline FullDoc Jumbo FHLMC LPMI EPMI FNMA)
+
             key_list.each_with_index do |key_name, key_index|
               if(Adjustment::INPUT_VALUES.include?(key_name))
-                if key_index==0
-                  if key_name == "LockDay"
-                    begin
-                      if adj.data[first_key][value_lock_period].present?
-                        adj_key_hash[key_index] = value_lock_period
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmBasic"
-                    begin
-                      if adj.data[first_key][value_arm_basic].present?
-                        adj_key_hash[key_index] = value_arm_basic
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmAdvanced"
-                    begin
-                      if adj.data[first_key][value_arm_advanced].present?
-                        adj_key_hash[key_index] = value_arm_advanced
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmCaps"
-                    begin
-                      if adj.data[first_key][value_arm_caps].present?
-                        adj_key_hash[key_index] = value_arm_caps
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FannieMaeProduct"
-                    begin
-                      if adj.data[first_key][value_fannie_mae_product].present?
-                        adj_key_hash[key_index] = value_fannie_mae_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FreddieMacProduct"
-                    begin
-                      if adj.data[first_key][value_freddie_mac_product].present?
-                        adj_key_hash[key_index] = value_freddie_mac_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "LoanPurpose"
-                    begin
-                      if adj.data[first_key][value_loan_purpose].present?
-                        adj_key_hash[key_index] = value_loan_purpose
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
+                if (0..6).include?(key_index)
+                  required_data = if key_index==0
+                                    adj.data[first_key]
+                                  elsif key_index==1
+                                    adj.data[first_key][adj_key_hash[key_index-1]]
+                                  elsif key_index==2
+                                    adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
+                                  elsif key_index==3
+                                    adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
+                                  elsif key_index==4
+                                    adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
+                                  elsif key_index==5
+                                    adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
+                                  elsif key_index==6
+                                    adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
+                                  end
 
-                  if key_name == "LoanAmount"
+                  if %w(LoanAmount LTV FICO LoanSize CLTV Term DTI).include?(key_name)
                     begin
-                      if adj.data[first_key].present?
-                        loan_amount_key2 = ''
-                        loan_amount_key2 = loan_amount_key_of_adjustment(adj.data[first_key].keys, value_loan_amount)
-                        if loan_amount_key2.present?
-                          adj_key_hash[key_index] = loan_amount_key2
+                      if required_data.present?
+                        method_name_initial_word = key_name&.strip&.underscore
+                        response_data = send(*["#{method_name_initial_word}_key_of_adjustment",required_data.keys, data_hash[key_name]])
+                        if response_data.present?
+                          adj_key_hash[key_index] = response_data
                         else
                           break
                         end
@@ -710,148 +578,30 @@ class SearchApi::DashboardController < ApplicationController
                       end
                     rescue Exception
                     end
-                  end
-
-                  if key_name == "ProgramCategory"
-                    begin
-                      if adj.data[first_key][value_program_category].present?
-                        adj_key_hash[key_index] = value_program_category
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "PropertyType"
-                    begin
-                      if adj.data[first_key][value_property_type].present?
-                        adj_key_hash[key_index] = value_property_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FinancingType"
-                    begin
-                      if adj.data[first_key][value_financing_type].present?
-                        adj_key_hash[key_index] = value_financing_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "PremiumType"
-                    begin
-                      if adj.data[first_key][value_premium_type].present?
-                        adj_key_hash[key_index] = value_premium_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LTV"
-                    begin
-                      if adj.data[first_key].present?
-                        ltv_key2 = ''
-                        ltv_key2 = ltv_key_of_adjustment(adj.data[first_key].keys, value_ltv)
-                        if ltv_key2.present?
-                          adj_key_hash[key_index] = ltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "FICO"
-                    begin
-                      if adj.data[first_key].present?
-                        fico_key2 = ''
-                        fico_key2 = fico_key_of_adjustment(adj.data[first_key].keys, value_credit_score)
-                        if fico_key2.present?
-                          adj_key_hash[key_index] = fico_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "RefinanceOption"
-                    begin
-                      if adj.data[first_key][value_refinance_option].present?
-                        adj_key_hash[key_index] = value_refinance_option
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "MiscAdjuster"
-                    begin
-                      if adj.data[first_key][value_misc_adjuster].present?
-                        adj_key_hash[key_index] = value_misc_adjuster
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanSize"
-                    begin
-                      loan_size_key2 = ''
-                      loan_size_key2 = loan_size_key_of_adjustment(adj.data[first_key].keys, value_loan_size)
-                      if loan_size_key2.present?
-                        adj_key_hash[key_index] = loan_size_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "CLTV"
-                    begin
-                      if adj.data[first_key].present?
-                        ltv_key2 = ''
-                        cltv_key2 = cltv_key_of_adjustment(adj.data[first_key].keys, value_cltv)
-                        if cltv_key2.present?
-                          adj_key_hash[key_index] = cltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "State"
+                  elsif key_name == "State"
                     begin
                       if value_state == "All"
-                        first_state_key = adj.data[first_key].keys.tap{|e| e.delete("cell_number") }.first
-                        if adj.data[first_key][first_state_key].present?
+                        first_state_key = required_data.keys.first.tap{|e| e.delete("cell_number") }.first
+                        if required_data[first_state_key].present?
                           adj_key_hash[key_index] = first_state_key
                         else
                           break
                         end
                       else
-                        if adj.data[first_key][value_state].present?
-                          adj_key_hash[key_index] = value_state
+                        adj_key_hash_required_value = required_data[data_hash[key_name]]
+                        if adj_key_hash_required_value.present?
+                          adj_key_hash[key_index] = data_hash[key_name]
+                        else
+                          break
+                        end
+                      end                        
+                    rescue Exception
+                    end
+                  else
+                    begin
+                      if (0..6).include?(key_index)
+                        if required_data[data_hash[key_name]].present?
+                          adj_key_hash[key_index] = data_hash[key_name]
                         else
                           break
                         end
@@ -859,1725 +609,10 @@ class SearchApi::DashboardController < ApplicationController
                     rescue Exception
                     end
                   end
-
-                  if key_name == "LoanType"
-                    begin
-                      if adj.data[first_key][value_loan_type].present?
-                        adj_key_hash[key_index] = value_loan_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "Term"
-                    begin
-                      term_key2 = ''
-                      term_key2 = term_key_of_adjustment(adj.data[first_key].keys, value_term)
-                      if term_key2.present?
-                        adj_key_hash[key_index] = term_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "DTI"
-                    begin
-                      dti_key2 = ''
-                      dti_key2 = dti_key_of_adjustment(adj.data[first_key].keys, value_dti)
-                      if dti_key2.present?
-                        adj_key_hash[key_index] = dti_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                end
-                if key_index==1
-                  if key_name == "LockDay"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_lock_period].present?
-                        adj_key_hash[key_index] = value_lock_period
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmBasic"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_arm_basic].present?
-                        adj_key_hash[key_index] = value_arm_basic
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmAdvanced"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_arm_advanced].present?
-                        adj_key_hash[key_index] = value_arm_advanced
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmCaps"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_arm_caps].present?
-                        adj_key_hash[key_index] = value_arm_caps
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FannieMaeProduct"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_fannie_mae_product].present?
-                        adj_key_hash[key_index] = value_fannie_mae_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FreddieMacProduct"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_freddie_mac_product].present?
-                        adj_key_hash[key_index] = value_freddie_mac_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "LoanPurpose"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_loan_purpose].present?
-                        adj_key_hash[key_index] = value_loan_purpose
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanAmount"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]].present?
-                        loan_amount_key2 = ''
-                        loan_amount_key2 = loan_amount_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-1]].keys, value_loan_amount)
-                        if loan_amount_key2.present?
-                          adj_key_hash[key_index] = loan_amount_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "ProgramCategory"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_program_category].present?
-                        adj_key_hash[key_index] = value_program_category
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "PropertyType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_property_type].present?
-                        adj_key_hash[key_index] = value_property_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FinancingType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_financing_type].present?
-                        adj_key_hash[key_index] = value_financing_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "PremiumType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_premium_type].present?
-                        adj_key_hash[key_index] = value_premium_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LTV"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]].present?
-                        ltv_key2 = ''
-                        ltv_key2 = ltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-1]].keys, value_ltv)
-
-                        if ltv_key2.present?
-                          adj_key_hash[key_index] = ltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "FICO"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]].present?
-                        fico_key2 = ''
-                        fico_key2 = fico_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-1]].keys, value_credit_score)
-                        if fico_key2.present?
-                          adj_key_hash[key_index] = fico_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "RefinanceOption"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_refinance_option].present?
-                        adj_key_hash[key_index] = value_refinance_option
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "MiscAdjuster"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_misc_adjuster].present?
-                        adj_key_hash[key_index] = value_misc_adjuster
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanSize"
-                    begin
-                      loan_size_key2 = ''
-                      loan_size_key2 = loan_size_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-1]].keys, value_loan_size)
-                      if loan_size_key2.present?
-                        adj_key_hash[key_index] = loan_size_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "CLTV"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]].present?
-                        cltv_key2 = ''
-                        cltv_key2 = cltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-1]].keys, value_cltv)
-                        if cltv_key2.present?
-                          adj_key_hash[key_index] = cltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "State"
-                    begin
-                      if value_state == "All"
-                        first_state_key = adj.data[first_key][adj_key_hash[key_index-1]].keys.tap{|e| e.delete("cell_number") }.first
-                        if adj.data[first_key][adj_key_hash[key_index-1]][first_state_key].present?
-                          adj_key_hash[key_index] = first_state_key
-                        else
-                          break
-                        end
-                      else
-                        if adj.data[first_key][adj_key_hash[key_index-1]][value_state].present?
-                          adj_key_hash[key_index] = value_state
-                        else
-                          break
-                        end
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-1]][value_loan_type].present?
-                        adj_key_hash[key_index] = value_loan_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "Term"
-                    begin
-                      term_key2 = ''
-                      term_key2 = term_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-1]].keys, value_term)
-                      if term_key2.present?
-                        adj_key_hash[key_index] = term_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "DTI"
-                    begin
-                      dti_key2 = ''
-                      dti_key2 = dti_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-1]].keys, value_dti)
-                      if dti_key2.present?
-                        adj_key_hash[key_index] = dti_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                end
-
-                if key_index==2
-                  if key_name == "LockDay"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_lock_period].present?
-                        adj_key_hash[key_index] = value_lock_period
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmBasic"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_basic].present?
-                        adj_key_hash[key_index] = value_arm_basic
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmAdvanced"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_advanced].present?
-                        adj_key_hash[key_index] = value_arm_advanced
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmCaps"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_caps].present?
-                        adj_key_hash[key_index] = value_arm_caps
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FannieMaeProduct"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_fannie_mae_product].present?
-                        adj_key_hash[key_index] = value_fannie_mae_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FreddieMacProduct"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_freddie_mac_product].present?
-                        adj_key_hash[key_index] = value_freddie_mac_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "LoanPurpose"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_loan_purpose].present?
-                        adj_key_hash[key_index] = value_loan_purpose
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanAmount"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        loan_amount_key2 = ''
-                        loan_amount_key2 = loan_amount_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_loan_amount)
-                        if loan_amount_key2.present?
-                          adj_key_hash[key_index] = loan_amount_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "ProgramCategory"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_program_category].present?
-                        adj_key_hash[key_index] = value_program_category
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "PropertyType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_property_type].present?
-                        adj_key_hash[key_index] = value_property_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FinancingType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_financing_type].present?
-                        adj_key_hash[key_index] = value_financing_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "PremiumType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_premium_type].present?
-                        adj_key_hash[key_index] = value_premium_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LTV"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        ltv_key2 = ''
-                        ltv_key2 = ltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_ltv)
-
-                        if ltv_key2.present?
-                          adj_key_hash[key_index] = ltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "FICO"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        fico_key2 = ''
-                        fico_key2 = fico_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_credit_score)
-                        if fico_key2.present?
-                          adj_key_hash[key_index] = fico_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "RefinanceOption"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_refinance_option].present?
-                        adj_key_hash[key_index] = value_refinance_option
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "MiscAdjuster"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_misc_adjuster].present?
-                        adj_key_hash[key_index] = value_misc_adjuster
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "LoanSize"
-                    begin
-                      loan_size_key2 = ''
-                      loan_size_key2 = loan_size_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_loan_size)
-                      if loan_size_key2.present?
-                        adj_key_hash[key_index] = loan_size_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "CLTV"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        cltv_key2 = ''
-                        cltv_key2 = cltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_cltv)
-                        if cltv_key2.present?
-                          adj_key_hash[key_index] = cltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "State"
-                    begin
-                      if value_state == "All"
-                        first_state_key = adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.tap{|e| e.delete("cell_number") }.first
-                        if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][first_state_key].present?
-                          adj_key_hash[key_index] = first_state_key
-                        else
-                          break
-                        end
-                      else
-                        if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_state].present?
-                          adj_key_hash[key_index] = value_state
-                        else
-                          break
-                        end
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_loan_type].present?
-                        adj_key_hash[key_index] = value_loan_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "Term"
-                    begin
-                      term_key2 = ''
-                      term_key2 = term_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_term)
-                      if term_key2.present?
-                        adj_key_hash[key_index] = term_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "DTI"
-                    begin
-                      dti_key2 = ''
-                      dti_key2 = dti_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_dti)
-                      if dti_key2.present?
-                        adj_key_hash[key_index] = dti_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                end
-                if key_index==3
-                  if key_name == "LockDay"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_lock_period].present?
-                        adj_key_hash[key_index] = value_lock_period
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmBasic"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_basic].present?
-                        adj_key_hash[key_index] = value_arm_basic
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmAdvanced"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_advanced].present?
-                        adj_key_hash[key_index] = value_arm_advanced
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmCaps"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_caps].present?
-                        adj_key_hash[key_index] = value_arm_caps
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FannieMaeProduct"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_fannie_mae_product].present?
-                        adj_key_hash[key_index] = value_fannie_mae_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FreddieMacProduct"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_freddie_mac_product].present?
-                        adj_key_hash[key_index] = value_freddie_mac_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "LoanPurpose"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_loan_purpose].present?
-                        adj_key_hash[key_index] = value_loan_purpose
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanAmount"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        loan_amount_key2 = ''
-                        loan_amount_key2 = loan_amount_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_loan_amount)
-
-                        if loan_amount_key2.present?
-                          adj_key_hash[key_index] = loan_amount_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "ProgramCategory"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_program_category].present?
-                        adj_key_hash[key_index] = value_program_category
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "PropertyType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_property_type].present?
-                        adj_key_hash[key_index] = value_property_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FinancingType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_financing_type].present?
-                        adj_key_hash[key_index] = value_financing_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "PremiumType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_premium_type].present?
-                        adj_key_hash[key_index] = value_premium_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LTV"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        ltv_key2 = ''
-                        ltv_key2 = ltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_ltv)
-                        if ltv_key2.present?
-                          adj_key_hash[key_index] = ltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "FICO"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        fico_key2 = ''
-                        fico_key2 = fico_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_credit_score)
-                        if fico_key2.present?
-                          adj_key_hash[key_index] = fico_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "RefinanceOption"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_refinance_option].present?
-                        adj_key_hash[key_index] = value_refinance_option
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "MiscAdjuster"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_misc_adjuster].present?
-                        adj_key_hash[key_index] = value_misc_adjuster
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "LoanSize"
-                    begin
-                      loan_size_key2 = ''
-                      loan_size_key2 = loan_size_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_loan_size)
-                      if loan_size_key2.present?
-                        adj_key_hash[key_index] = loan_size_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "CLTV"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        cltv_key2 = ''
-                        cltv_key2 = cltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_cltv)
-                        if cltv_key2.present?
-                          adj_key_hash[key_index] = cltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "State"
-                    begin
-                      if value_state == "All"
-                        first_state_key = adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.tap{|e| e.delete("cell_number") }.first
-                        if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][first_state_key].present?
-                          adj_key_hash[key_index] = first_state_key
-                        else
-                          break
-                        end
-                      else
-                        if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_state].present?
-                          adj_key_hash[key_index] = value_state
-                        else
-                          break
-                        end
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_loan_type].present?
-                        adj_key_hash[key_index] = value_loan_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "Term"
-                    begin
-                      term_key2 = ''
-                      term_key2 = term_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_term)
-                      if term_key2.present?
-                        adj_key_hash[key_index] = term_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "DTI"
-                    begin
-                      dti_key2 = ''
-                      dti_key2 = dti_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_dti)
-                      if dti_key2.present?
-                        adj_key_hash[key_index] = dti_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                end
-                if key_index==4
-                  if key_name == "LockDay"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_lock_period].present?
-                        adj_key_hash[key_index] = value_lock_period
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmBasic"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_basic].present?
-                        adj_key_hash[key_index] = value_arm_basic
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmAdvanced"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_advanced].present?
-                        adj_key_hash[key_index] = value_arm_advanced
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmCaps"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_caps].present?
-                        adj_key_hash[key_index] = value_arm_caps
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FannieMaeProduct"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_fannie_mae_product].present?
-                        adj_key_hash[key_index] = value_fannie_mae_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FreddieMacProduct"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_freddie_mac_product].present?
-                        adj_key_hash[key_index] = value_freddie_mac_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "LoanPurpose"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_loan_purpose].present?
-                        adj_key_hash[key_index] = value_loan_purpose
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanAmount"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        loan_amount_key2 = ''
-                        loan_amount_key2 = loan_amount_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_loan_amount)
-
-                        if loan_amount_key2.present?
-                          adj_key_hash[key_index] = loan_amount_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "ProgramCategory"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_program_category].present?
-                        adj_key_hash[key_index] = value_program_category
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "PropertyType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_property_type].present?
-                        adj_key_hash[key_index] = value_property_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FinancingType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_financing_type].present?
-                        adj_key_hash[key_index] = value_financing_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "PremiumType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_premium_type].present?
-                        adj_key_hash[key_index] = value_premium_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LTV"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        ltv_key2 = ''
-                        ltv_key2 = ltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_ltv)
-
-                        if ltv_key2.present?
-                          adj_key_hash[key_index] = ltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "FICO"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        fico_key2 = ''
-                        fico_key2 = fico_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_credit_score)
-                        if fico_key2.present?
-                          adj_key_hash[key_index] = fico_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "RefinanceOption"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_refinance_option].present?
-                        adj_key_hash[key_index] = value_refinance_option
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "MiscAdjuster"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_misc_adjuster].present?
-                        adj_key_hash[key_index] = value_misc_adjuster
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "LoanSize"
-                    begin
-                      loan_size_key2 = ''
-                      loan_size_key2 = loan_size_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_loan_size)
-                      if loan_size_key2.present?
-                        adj_key_hash[key_index] = loan_size_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "CLTV"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        cltv_key2 = ''
-                        cltv_key2 = cltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_cltv)
-                        if cltv_key2.present?
-                          adj_key_hash[key_index] = cltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "State"
-                    begin
-                      if value_state == "All"
-                        first_state_key = adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.tap{|e| e.delete("cell_number") }.first
-                        if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][first_state_key].present?
-                          adj_key_hash[key_index] = first_state_key
-                        else
-                          break
-                        end
-                      else
-                        if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_state].present?
-                          adj_key_hash[key_index] = value_state
-                        else
-                          break
-                        end
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_loan_type].present?
-                        adj_key_hash[key_index] = value_loan_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "Term"
-                    begin
-                      term_key2 = ''
-                      term_key2 = term_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_term)
-                      if term_key2.present?
-                        adj_key_hash[key_index] = term_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "DTI"
-                    begin
-                      dti_key2 = ''
-                      dti_key2 = dti_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_dti)
-                      if dti_key2.present?
-                        adj_key_hash[key_index] = dti_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                end
-                if key_index==5
-                  if key_name == "LockDay"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_lock_period].present?
-                        adj_key_hash[key_index] = value_lock_period
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmBasic"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_basic].present?
-                        adj_key_hash[key_index] = value_arm_basic
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmAdvanced"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_advanced].present?
-                        adj_key_hash[key_index] = value_arm_advanced
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmCaps"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_caps].present?
-                        adj_key_hash[key_index] = value_arm_caps
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FannieMaeProduct"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_fannie_mae_product].present?
-                        adj_key_hash[key_index] = value_fannie_mae_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FreddieMacProduct"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_freddie_mac_product].present?
-                        adj_key_hash[key_index] = value_freddie_mac_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "LoanPurpose"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_loan_purpose].present?
-                        adj_key_hash[key_index] = value_loan_purpose
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanAmount"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        loan_amount_key2 = ''
-                        loan_amount_key2 = loan_amount_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_loan_amount)
-
-                        if loan_amount_key2.present?
-                          adj_key_hash[key_index] = loan_amount_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "ProgramCategory"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_program_category].present?
-                        adj_key_hash[key_index] = value_program_category
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "PropertyType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_property_type].present?
-                        adj_key_hash[key_index] = value_property_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FinancingType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_financing_type].present?
-                        adj_key_hash[key_index] = value_financing_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "PremiumType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_premium_type].present?
-                        adj_key_hash[key_index] = value_premium_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LTV"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        ltv_key2 = ''
-                        ltv_key2 = ltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_ltv)
-
-                        if ltv_key2.present?
-                          adj_key_hash[key_index] = ltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "FICO"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        fico_key2 = ''
-                        fico_key2 = fico_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_credit_score)
-                        if fico_key2.present?
-                          adj_key_hash[key_index] = fico_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "RefinanceOption"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_refinance_option].present?
-                        adj_key_hash[key_index] = value_refinance_option
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "MiscAdjuster"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_misc_adjuster].present?
-                        adj_key_hash[key_index] = value_misc_adjuster
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "LoanSize"
-                    begin
-                      loan_size_key2 = ''
-                      loan_size_key2 = loan_size_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_loan_size)
-                      if loan_size_key2.present?
-                        adj_key_hash[key_index] = loan_size_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "CLTV"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        cltv_key2 = ''
-                        cltv_key2 = cltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_cltv)
-                        if cltv_key2.present?
-                          adj_key_hash[key_index] = cltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "State"
-                    begin
-                      if value_state == "All"
-                        first_state_key = adj.data[first_range_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.tap{|e| e.delete("cell_number") }.first
-                        if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][first_state_key].present?
-                          adj_key_hash[key_index] = first_state_key
-                        else
-                          break
-                        end
-                      else
-                        if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_state].present?
-                          adj_key_hash[key_index] = value_state
-                        else
-                          break
-                        end
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_loan_type].present?
-                        adj_key_hash[key_index] = value_loan_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "Term"
-                    begin
-                      term_key2 = ''
-                      term_key2 = term_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_term)
-                      if term_key2.present?
-                        adj_key_hash[key_index] = term_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "DTI"
-                    begin
-                      dti_key2 = ''
-                      dti_key2 = dti_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_dti)
-                      if dti_key2.present?
-                        adj_key_hash[key_index] = dti_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                end
-                if key_index==6
-                  if key_name == "LockDay"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_lock_period].present?
-                        adj_key_hash[key_index] = value_lock_period
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmBasic"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_basic].present?
-                        adj_key_hash[key_index] = value_arm_basic
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmAdvanced"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_advanced].present?
-                        adj_key_hash[key_index] = value_arm_advanced
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "ArmCaps"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_arm_caps].present?
-                        adj_key_hash[key_index] = value_arm_caps
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FannieMaeProduct"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_fannie_mae_product].present?
-                        adj_key_hash[key_index] = value_fannie_mae_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FreddieMacProduct"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_freddie_mac_product].present?
-                        adj_key_hash[key_index] = value_freddie_mac_product
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "LoanPurpose"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_loan_purpose].present?
-                        adj_key_hash[key_index] = value_loan_purpose
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanAmount"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        loan_amount_key2 = ''
-                        loan_amount_key2 = loan_amount_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_loan_amount)
-
-                        if loan_amount_key2.present?
-                          adj_key_hash[key_index] = loan_amount_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "ProgramCategory"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_program_category].present?
-                        adj_key_hash[key_index] = value_program_category
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "PropertyType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_property_type].present?
-                        adj_key_hash[key_index] = value_property_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "FinancingType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_financing_type].present?
-                        adj_key_hash[key_index] = value_financing_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-                  if key_name == "PremiumType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_premium_type].present?
-                        adj_key_hash[key_index] = value_premium_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LTV"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        ltv_key2 = ''
-                        ltv_key2 = ltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_ltv)
-
-                        if ltv_key2.present?
-                          adj_key_hash[key_index] = ltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "FICO"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        fico_key2 = ''
-                        fico_key2 = fico_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_credit_score)
-                        if fico_key2.present?
-                          adj_key_hash[key_index] = fico_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "RefinanceOption"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_refinance_option].present?
-                        adj_key_hash[key_index] = value_refinance_option
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "MiscAdjuster"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_misc_adjuster].present?
-                        adj_key_hash[key_index] = value_misc_adjuster
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanSize"
-                    begin
-                      loan_size_key2 = ''
-                      loan_size_key2 = loan_size_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_loan_size)
-                      if loan_size_key2.present?
-                        adj_key_hash[key_index] = loan_size_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "CLTV"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].present?
-                        cltv_key2 = ''
-                        cltv_key2 = cltv_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_cltv)
-                        if cltv_key2.present?
-                          adj_key_hash[key_index] = cltv_key2
-                        else
-                          break
-                        end
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "State"
-                    begin
-                      if value_state == "All"
-                        first_state_key = adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys.tap{|e| e.delete("cell_number") }.first
-                        if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][first_state_key].present?
-                          adj_key_hash[key_index] = first_state_key
-                        else
-                          break
-                        end
-                      else
-                        if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_state].present?
-                          adj_key_hash[key_index] = value_state
-                        else
-                          break
-                        end
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "LoanType"
-                    begin
-                      if adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]][value_loan_type].present?
-                        adj_key_hash[key_index] = value_loan_type
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "Term"
-                    begin
-                      term_key2 = ''
-                      term_key2 = term_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_term)
-                      if term_key2.present?
-                        adj_key_hash[key_index] = term_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
-                  if key_name == "DTI"
-                    begin
-                      dti_key2 = ''
-                      dti_key2 = dti_key_of_adjustment(adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]].keys, value_dti)
-                      if dti_key2.present?
-                        adj_key_hash[key_index] = dti_key2
-                      else
-                        break
-                      end
-                    rescue Exception
-                    end
-                  end
-
                 end
               else
-                if key_index==0
-                  if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj_key_hash[key_index] = "true"
-                  end
-                end
-                if key_index==1
-                  if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj_key_hash[key_index] = "true"
-                  end
-                end
-                if key_index==2
-                  if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj_key_hash[key_index] = "true"
-                  end
-                end
-                if key_index==3
-                  if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj_key_hash[key_index] = "true"
-                  end
-                end
-                if key_index==4
-                  if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj_key_hash[key_index] = "true"
-                  end
-                end
-                if key_index==5
-                  if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
-                    adj_key_hash[key_index] = "true"
-                  end
-                end
-                if key_index==6
-                  if (key_name == "HighBalance" || key_name == "Conforming" || key_name == "FannieMae" || key_name == "FannieMaeHomeReady" || key_name == "FreddieMac" || key_name == "FreddieMacHomePossible" || key_name == "FHA" || key_name == "VA" || key_name == "USDA" || key_name == "Streamline" || key_name == "FullDoc" || key_name == "Jumbo" || key_name == "FHLMC" || key_name == "LPMI" || key_name == "EPMI" || key_name == "FNMA")
+                if (0..6).include?(key_index)
+                  if non_adjustment_input_values.include?(key_name)
                     adj_key_hash[key_index] = "true"
                   end
                 end
