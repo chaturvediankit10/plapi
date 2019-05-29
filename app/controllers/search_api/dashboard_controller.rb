@@ -2673,7 +2673,7 @@ class SearchApi::DashboardController < ApplicationController
       loan_amount = (@home_price.to_i - @down_payment.to_i) rescue nil
 
       if air_values.try(:first).present?
-        hash_obj[:closing_cost] = ((air_values.try(:first).try(:to_f))*loan_amount) rescue nil
+        hash_obj[:closing_cost] = ((air_values.try(:first).try(:to_f)/100)*loan_amount) rescue nil
       else
         hash_obj[:closing_cost] = 0.0
       end
@@ -2722,7 +2722,7 @@ class SearchApi::DashboardController < ApplicationController
       }
 
     end
-    return value_result.sort_by { |h| h[:air] } || []
+    return value_result.sort_by { |h| h[:closing_cost] } || []
   end
 
   def loan_size_key_of_adjustment(loan_size_keys, value_loan_size)
