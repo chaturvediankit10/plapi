@@ -497,7 +497,7 @@ class SearchApi::DashboardController < ApplicationController
     data_hash['DTI'] = value_dti
 
     hash_obj = {
-                 :id => "", :term => nil, :air => "", :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :apr => 0.0
+                 :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :apr => 0.0
                }
 
     programs.each do |pro|
@@ -581,7 +581,7 @@ class SearchApi::DashboardController < ApplicationController
                   elsif key_name == "State"
                     begin
                       if value_state == "All"
-                        first_state_key = required_data.keys.first.tap{|e| e.delete("cell_number") }.first
+                        first_state_key = required_data.keys.tap{|e| e.delete("cell_number") }.first
                         if required_data[first_state_key].present?
                           adj_key_hash[key_index] = first_state_key
                         else
@@ -594,7 +594,7 @@ class SearchApi::DashboardController < ApplicationController
                         else
                           break
                         end
-                      end                        
+                      end
                     rescue Exception
                     end
                   else
@@ -618,77 +618,45 @@ class SearchApi::DashboardController < ApplicationController
                 end
               end
             end
+
             adj_key_hash.keys.each do |hash_key, index|
-              if hash_key==0 && adj_key_hash.keys.count-1==hash_key
-                point = adj.data[first_key][adj_key_hash[hash_key]]
-                if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
-                  hash_obj[:adj_points] << point.to_f
-                  hash_obj[:final_rate] << point.to_f
-                  hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
+              begin
+                point = case hash_key
+                        when 0
+                          adj.data[first_key][adj_key_hash[hash_key]]
+                        when 1
+                          adj.data[first_key][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
+                        when 2
+                          adj.data[first_key][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
+                        when 3
+                          adj.data[first_key][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
+                        when 4
+                          adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
+                        when 5
+                          adj.data[first_key][adj_key_hash[hash_key-5]][adj_key_hash[hash_key-4]][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
+                        when 6
+                          adj.data[first_key][adj_key_hash[hash_key-6]][adj_key_hash[hash_key-5]][adj_key_hash[hash_key-4]][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
+                        end
+
+                if adj_key_hash.keys.count-1==hash_key
+                  if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
+                    hash_obj[:adj_points] << point.to_f
+                    hash_obj[:final_rate] << point.to_f
+                    hash_obj[:adj_primary_key] << adj.data.keys.first
+                    hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
+                  end
                 end
-              end
-              if hash_key==1 && adj_key_hash.keys.count-1==hash_key
-                point = adj.data[first_key][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
-                  hash_obj[:adj_points] << point.to_f
-                  hash_obj[:final_rate] << point.to_f
-                  hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
-                end
-              end
-              if hash_key==2 && adj_key_hash.keys.count-1==hash_key
-                point = adj.data[first_key][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
-                  hash_obj[:adj_points] << point.to_f
-                  hash_obj[:final_rate] << point.to_f
-                  hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
-                end
-              end
-              if hash_key==3 && adj_key_hash.keys.count-1==hash_key
-                point = adj.data[first_key][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
-                  hash_obj[:adj_points] << point.to_f
-                  hash_obj[:final_rate] << point.to_f
-                  hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
-                end
-              end
-              if hash_key==4 && adj_key_hash.keys.count-1==hash_key
-                point = adj.data[first_key][adj_key_hash[hash_key-4]][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
-                  hash_obj[:adj_points] << point.to_f
-                  hash_obj[:final_rate] << point.to_f
-                  hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
-                end
-              end
-              if hash_key==5 && adj_key_hash.keys.count-1==hash_key
-                point = adj.data[first_key][adj_key_hash[hash_key-5]][adj_key_hash[hash_key-4]][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
-                  hash_obj[:adj_points] << point.to_f
-                  hash_obj[:final_rate] << point.to_f
-                  hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
-                end
-              end
-              if hash_key==6 && adj_key_hash.keys.count-1==hash_key
-                point = adj.data[first_key][adj_key_hash[hash_key-6]][adj_key_hash[hash_key-5]][adj_key_hash[hash_key-4]][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
-                  hash_obj[:adj_points] << point.to_f
-                  hash_obj[:final_rate] << point.to_f
-                  hash_obj[:adj_primary_key] << adj.data.keys.first
-                  hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
-                end
+              rescue Exception
               end
             end
+
           end
         else
           hash_obj[:adj_points] = "Adjustment Not Present"
           hash_obj[:adj_primary_key] = "Adjustment Not Present"
         end
       end
+
       air_values = []
       if hash_obj[:adj_points].present?
         @point = '0'
@@ -703,6 +671,7 @@ class SearchApi::DashboardController < ApplicationController
           hash_obj[:air] = 0.0
         end
       end
+
       hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f)) rescue nil
 
       loan_amount = (@home_price.to_i - @down_payment.to_i) rescue nil
@@ -714,48 +683,11 @@ class SearchApi::DashboardController < ApplicationController
       end
 
       hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
-
       value_result << hash_obj
 
       hash_obj = {
-        :id => "",
-        :term => nil,
-        :air => 0.0,
-        :conforming => "",
-        :fannie_mae => "",
-        :fannie_mae_home_ready => "",
-        :freddie_mac => "",
-        :freddie_mac_home_possible => "",
-        :fha => "",
-        :va => "",
-        :usda => "",
-        :streamline => "",
-        :full_doc => "",
-        :loan_category => "",
-        :program_category => "",
-        :bank_name => "",
-        :program_name => "",
-        :loan_type => "",
-        :loan_purpose => "",
-        :arm_basic => "",
-        :arm_advanced => "",
-        :arm_caps => "",
-        :loan_size => "",
-        :fannie_mae_product => "",
-        :freddie_mac_product => "",
-        :fannie_mae_du => "",
-        :freddie_mac_lp => "",
-        :arm_benchmark => "",
-        :arm_margin => "",
-        :base_rate => 0.0,
-        :adj_points => [],
-        :adj_primary_key => [],
-        :final_rate => [],
-        :cell_number=>[],
-        :closing_cost => 0.0,
-        :apr => 0.0
-      }
-
+                   :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :apr => 0.0
+                 }
     end
     return value_result.sort_by { |h| h[:air] } || []
   end
@@ -773,16 +705,10 @@ class SearchApi::DashboardController < ApplicationController
     loan_amount_keys.delete("cell_number")
     loan_amount_key2 = ''
     if value_loan_amount.include?("-")
-      first_range = value_loan_amount.split("-").first.strip.to_i
-      last_range = value_loan_amount.split("-").last.strip.to_i
+      first_range, last_range = value_loan_amount.split("-").map{ |val| val.strip.to_i }
       if loan_amount_keys.present?
         loan_amount_keys.each do |loan_amount_key|
-          if loan_amount_key.include?("$")
-            loan_amount_key = loan_amount_key.tr('$', '').strip
-          end
-          if loan_amount_key.include?(",")
-            loan_amount_key = loan_amount_key.tr(',', '').strip
-          end
+          %w($ ,).map{ |key| loan_amount_key = loan_amount_key.tr(key, '').strip  if loan_amount_key.include?(key) }
           if (loan_amount_key.include?("Inf") || loan_amount_key.include?("Infinity"))
             loan_amount_value = loan_amount_key.split("-").first.strip.to_i
             if (loan_amount_value <= first_range)
@@ -790,11 +716,10 @@ class SearchApi::DashboardController < ApplicationController
             end
           else
             if loan_amount_key.include?("-")
-                first_value_range = loan_amount_key.split("-").first.strip.to_i
-                last_value_range = loan_amount_key.split("-").last.strip.to_i
-                if (first_value_range.between?(first_range, ((last_range-1))) || last_value_range.between?(first_range, ((last_range-1))))
-                  loan_amount_key2 = loan_amount_key
-                end
+              first_value_range, last_value_range = loan_amount_key.split("-").map{ |val| val.strip.to_i }
+              if (first_value_range.between?(first_range, ((last_range-1))) || last_value_range.between?(first_range, ((last_range-1))))
+                loan_amount_key2 = loan_amount_key
+              end
             end
           end
         end
@@ -803,12 +728,7 @@ class SearchApi::DashboardController < ApplicationController
       full_range = value_loan_amount.split("+").first.strip.to_i
       if loan_amount_keys.present?
         loan_amount_keys.each do |loan_amount_key|
-          if loan_amount_key.include?("$")
-            loan_amount_key = loan_amount_key.tr('$', '').strip
-          end
-          if loan_amount_key.include?(",")
-            loan_amount_key = loan_amount_key.tr(',', '').strip
-          end
+          %w($ ,).map{ |key| loan_amount_key = loan_amount_key.tr(key, '').strip  if loan_amount_key.include?(key) }
           if (loan_amount_key.include?("Inf") || loan_amount_key.include?("Infinity"))
             loan_amount_value = loan_amount_key.split("-").first.strip.to_i
             if (full_range <= loan_amount_value)
@@ -816,11 +736,11 @@ class SearchApi::DashboardController < ApplicationController
             end
           else
             if loan_amount_key.include?("-")
-                last_value_range = loan_amount_key.split("-").last.strip.to_i
+              last_value_range = loan_amount_key.split("-").last.strip.to_i
 
-                if (last_value_range >= full_range)
-                  loan_amount_key2 = loan_amount_key
-                end
+              if (last_value_range >= full_range)
+                loan_amount_key2 = loan_amount_key
+              end
             end
           end
         end
@@ -1051,5 +971,4 @@ class SearchApi::DashboardController < ApplicationController
   def calculate_apr_value(air_value)
     ( 1 + air_value / 30 ) ** 365 - 1 rescue nil
   end
-
 end
