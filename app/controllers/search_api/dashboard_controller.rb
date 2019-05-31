@@ -534,6 +534,7 @@ class SearchApi::DashboardController < ApplicationController
           data_hash['Term'] = value_term
         end
       end
+
       if pro.adjustment_ids.present?
         program_adjustments = pro.adjustments
         if program_adjustments.present?
@@ -547,19 +548,20 @@ class SearchApi::DashboardController < ApplicationController
             key_list.each_with_index do |key_name, key_index|
               if(Adjustment::INPUT_VALUES.include?(key_name))
                 if (0..6).include?(key_index)
-                  required_data = if key_index==0
+                  required_data = case key_index
+                                  when 0
                                     adj.data[first_key]
-                                  elsif key_index==1
+                                  when 1
                                     adj.data[first_key][adj_key_hash[key_index-1]]
-                                  elsif key_index==2
+                                  when 2
                                     adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
-                                  elsif key_index==3
+                                  when 3
                                     adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
-                                  elsif key_index==4
+                                  when 4
                                     adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
-                                  elsif key_index==5
+                                  when 5
                                     adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
-                                  elsif key_index==6
+                                  when 6
                                     adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
                                   end
 
