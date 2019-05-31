@@ -500,6 +500,11 @@ class SearchApi::DashboardController < ApplicationController
                  :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :apr => 0.0
                }
 
+    all_adj_ids = []
+    programs.each {|p| all_adj_ids +=  p.adjustment_ids.split(',').collect{|e| e.to_i}}
+    all_adj_ids.uniq!
+    all_adjustments = Adjustment.find(all_adj_ids)
+
     programs.each do |pro|
       hash_obj.except(:air, :base_rate, :adj_points, :adj_primary_key, :final_rate, :cell_number, :closing_cost, :apr).keys.map{ |key| hash_obj[key.to_sym] = pro.send(key) }
 
@@ -536,7 +541,11 @@ class SearchApi::DashboardController < ApplicationController
       end
 
       if pro.adjustment_ids.present?
-        program_adjustments = pro.adjustments
+#        program_adjustments = pro.adjustments
+
+        program_adjustment_ids = pro.adjustment_ids.split(',').collect{|e| e.to_i}
+        program_adjustments = all_adjustments.select{|adj| program_adjustment_ids.include?(adj.id) }
+
         if program_adjustments.present?
           program_adjustments.each do |adj|
             first_key = adj.data.keys.first
