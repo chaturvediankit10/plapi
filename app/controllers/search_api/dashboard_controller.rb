@@ -501,7 +501,8 @@ class SearchApi::DashboardController < ApplicationController
                }
 
     all_adj_ids = []
-    programs.each {|p| all_adj_ids +=  p.adjustment_ids.split(',').collect{|e| e.to_i}}
+    # programs.each {|p| all_adj_ids +=  p.adjustment_ids.try(:split(',')).collect{|e| e.to_i}}
+    programs.each {|p| all_adj_ids +=  p.adjustment_ids.split(',').collect{|e| e.to_i} if p.adjustment_ids}
     all_adj_ids.uniq!
     all_adjustments = Adjustment.find(all_adj_ids)
 
