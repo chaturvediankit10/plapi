@@ -375,14 +375,14 @@ class SearchApi::DashboardController < ApplicationController
       term_programs1 = Program.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
       term_programs = find_programs_on_term_based(term_programs1, @filter_data[:term])
       if (@filter_data.keys & [:term] & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark, :term]).any?
-        arm_programs = Program.where(@filter_data.except(:term))
+        arm_programs = arm_all_programs.where(@filter_data.except(:term))
       end
     elsif (@filter_data.keys & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark]).any?
-      arm_programs = Program.where(@filter_data.except(:term))
+      arm_programs = arm_all_programs.where(@filter_data.except(:term))
     end
     if arm_programs.present?
       arm_ids = arm_programs.pluck(:id)
-      arm_programs = Program.where(id: arm_ids).where(@filter_data.except(:term))
+      arm_programs = arm_all_programs.where(id: arm_ids).where(@filter_data.except(:term))
       # arm_programs = arm_programs.where(@filter_data.except(:term))
     end
 
