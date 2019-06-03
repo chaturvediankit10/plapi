@@ -7,15 +7,17 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def list_of_banks_and_programs_with_search_results
-    @banks = Bank.all
-    @all_banks_name = @banks.pluck(:name)
-    if params["commit"].present?
-      set_variable
-    else
-      set_default_values_without_submition
-    end
-    find_base_rate
-    fetch_programs_by_bank(true)
+    @time = Benchmark.measure {
+      @banks = Bank.all
+      @all_banks_name = @banks.pluck(:name)
+      if params["commit"].present?
+        set_variable
+      else
+        set_default_values_without_submition
+      end
+      find_base_rate
+      fetch_programs_by_bank(true)
+    }
   end
 
   def fetch_programs_by_bank(html_type=false)
@@ -62,9 +64,13 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def set_default
-    @term_list = (Program.pluck(:term).reject(&:blank?).uniq.map{|n| n if n.to_s.length < 3}.reject(&:blank?).push(5,10,15,20,25,30).uniq.sort).map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
-    @arm_advanced_list = Program.pluck(:arm_advanced).push("5-5").uniq.compact.reject { |c| c.empty? }.map{|c| [c]}
-    @arm_caps_list = Program.pluck(:arm_caps).push("3-2-5").uniq.compact.reject { |c| c.empty? }.map{|c| [c]}
+    # binding.pry
+    @term_list = Program.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
+    # @term_list = (Program.pluck(:term).reject(&:blank?).uniq.map{|n| n if n.to_s.length < 3}.reject(&:blank?).push(5,10,15,20,25,30).uniq.sort).map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
+    @arm_advanced_list = Program.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
+    # @arm_advanced_list = Program.pluck(:arm_advanced).push("5-5").uniq.compact.reject { |c| c.empty? }.map{|c| [c]}
+    @arm_caps_list = Program.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
+    # @arm_caps_list = Program.pluck(:arm_caps).push("3-2-5").uniq.compact.reject { |c| c.empty? }.map{|c| [c]}
     @base_rate = 0.0
     @filter_data = {}
     @filter_not_nil = {}
@@ -541,7 +547,7 @@ class SearchApi::DashboardController < ApplicationController
       end
 
       if pro.adjustment_ids.present?
-#        program_adjustments = pro.adjustments
+       # program_adjustments = pro.adjustments
 
         program_adjustment_ids = pro.adjustment_ids.split(',').collect{|e| e.to_i}
         program_adjustments = all_adjustments.select{|adj| program_adjustment_ids.include?(adj.id) }
