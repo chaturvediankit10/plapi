@@ -386,14 +386,14 @@ class SearchApi::DashboardController < ApplicationController
       term_programs1 = Program.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
       term_programs = find_programs_on_term_based(term_programs1, @filter_data[:term])
       if (@filter_data.keys & [:term] & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark, :term]).any?
-        arm_programs = Program.where(@filter_data.except(:term))
+        arm_programs = arm_all_programs.where(@filter_data.except(:term))
       end
     elsif (@filter_data.keys & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark]).any?
-      arm_programs = Program.where(@filter_data.except(:term))
+      arm_programs = arm_all_programs.where(@filter_data.except(:term))
     end
     if arm_programs.present?
       arm_ids = arm_programs.pluck(:id)
-      arm_programs = Program.where(id: arm_ids).where(@filter_data.except(:term))
+      arm_programs = arm_all_programs.where(id: arm_ids).where(@filter_data.except(:term))
       # arm_programs = arm_programs.where(@filter_data.except(:term))
     end
 
@@ -512,7 +512,8 @@ class SearchApi::DashboardController < ApplicationController
                }
 
     all_adj_ids = []
-    programs.each {|p| all_adj_ids +=  p.adjustment_ids.split(',').collect{|e| e.to_i}}
+    # programs.each {|p| all_adj_ids +=  p.adjustment_ids.try(:split(',')).collect{|e| e.to_i}}
+    programs.each {|p| all_adj_ids +=  p.adjustment_ids.split(',').collect{|e| e.to_i} if p.adjustment_ids}
     all_adj_ids.uniq!
     all_adjustments = Adjustment.find(all_adj_ids)
 
@@ -705,7 +706,8 @@ class SearchApi::DashboardController < ApplicationController
       end
 
       hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
-      value_result << hash_obj
+      value_result << hash_obj unless (hash_obj[:air] == 0.0)
+      # value_result << hash_obj
 
       hash_obj = {
                    :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :apr => 0.0
