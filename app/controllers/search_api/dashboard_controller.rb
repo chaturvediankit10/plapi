@@ -2,9 +2,9 @@ class SearchApi::DashboardController < ApplicationController
   layout "application"
   before_action :set_default
 
-  def index
-    list_of_banks_and_programs_with_search_results
-  end
+  # def index
+  #   list_of_banks_and_programs_with_search_results
+  # end
 
   def list_of_banks_and_programs_with_search_results
     @time = Benchmark.measure {
@@ -48,6 +48,8 @@ class SearchApi::DashboardController < ApplicationController
     # N+1 query, there is unrequired loop, we need to remove that, so that it will load quickly
     render json: {program_list: @program_names.map{ |lc| {name: lc}}, loan_category_list: @loan_categories.map{ |lc| {name: lc}}, pro_category_list: @program_categories.map{ |lc| {name: lc}}} unless html_type
   end
+
+  private
 
   def set_default_values_without_submition
     @filter_not_nil[:term] = nil
@@ -105,15 +107,18 @@ class SearchApi::DashboardController < ApplicationController
     @down_payment = "50000"
     @coverage = "30.5%"
     @margin = "2.0"
-    ltv_range = 65.01..70.0
-    array_data = []
-    ltv_range.step(0.01) { |f| array_data << f.round(2) } rescue nil
-    @ltv = array_data.try(:uniq)
+    # ltv_range = 65.01..70.0
+    # array_data = []
+    # ltv_range.step(0.01) { |f| array_data << f.round(2) } rescue nil
+    # @ltv = array_data.try(:uniq)
 
-    cltv_range = 75.01..80.0
-    array_data = []
-    cltv_range.step(0.01) { |f| array_data << f.round(2) } rescue nil
-    @cltv = array_data.try(:uniq)
+    # cltv_range = 75.01..80.0
+    # array_data = []
+    # cltv_range.step(0.01) { |f| array_data << f.round(2) } rescue nil
+    # @cltv = array_data.try(:uniq)
+    @ltv = (6500..7000).to_a.map{|e| e.to_f/100}
+    @cltv = (7501..8000).to_a.map{|e| e.to_f/100}
+
     @credit_score = (700..719).to_a
   end
 
