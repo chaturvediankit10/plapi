@@ -66,7 +66,6 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def set_default
-    # binding.pry
     @term_list = Program.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
     # @term_list = (Program.pluck(:term).reject(&:blank?).uniq.map{|n| n if n.to_s.length < 3}.reject(&:blank?).push(5,10,15,20,25,30).uniq.sort).map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
     @arm_advanced_list = Program.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
@@ -393,7 +392,7 @@ class SearchApi::DashboardController < ApplicationController
     end
     if arm_programs.present?
       arm_ids = arm_programs.pluck(:id)
-      arm_programs = arm_all_programs.where(id: arm_ids).where(@filter_data.except(:term))
+      arm_programs = Program.where(id: arm_ids).where(@filter_data.except(:term))
       # arm_programs = arm_programs.where(@filter_data.except(:term))
     end
 
@@ -411,8 +410,8 @@ class SearchApi::DashboardController < ApplicationController
           total_searched_program = total_searched_program1
         else
           @loan_size = params[:loan_size]
-          total_searched_program1 = total_searched_program1.where.not(loan_size: nil)
-          # total_searched_program1 = total_searched_program1.map{ |pro| pro if pro.loan_size!=nil}.compact
+          # total_searched_program1 = total_searched_program1.where.not(loan_size: nil)
+          total_searched_program1 = total_searched_program1.map{ |pro| pro if pro.loan_size!=nil}.compact
           total_searched_program1.each do |pro|
             if(pro.loan_size.split("&").map{ |l| l.strip }.include?(params[:loan_size]))
               total_searched_program << pro
