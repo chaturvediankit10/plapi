@@ -24,20 +24,20 @@ class SearchApi::DashboardController < ApplicationController
     
 
     if params[:bank_name].present?
-      @all_programs = @all_programs.where(bank_name: params[:bank_name]) unless params[:bank_name].eql?('All')
+      @programs_all = @programs_all.where(bank_name: params[:bank_name]) unless params[:bank_name].eql?('All')
     end
 
     if params[:loan_category].present?
-      @all_programs = @all_programs.where(loan_category: params[:loan_category]) unless params[:loan_category].eql?('All')
+      @programs_all = @programs_all.where(loan_category: params[:loan_category]) unless params[:loan_category].eql?('All')
     end
 
     if params[:pro_category].present?
-      @all_programs = @all_programs.where(program_category: params[:pro_category]) unless (params[:pro_category] == "All" || params[:pro_category] == "No Category")
+      @programs_all = @programs_all.where(program_category: params[:pro_category]) unless (params[:pro_category] == "All" || params[:pro_category] == "No Category")
     end
 
-    @program_names = @all_programs.pluck(:program_name).uniq.compact.sort
-    @loan_categories = @all_programs.pluck(:loan_category).uniq.compact.sort
-    @program_categories = @all_programs.pluck(:program_category).uniq.compact.sort
+    @program_names = @programs_all.pluck(:program_name).uniq.compact.sort
+    @loan_categories = @programs_all.pluck(:loan_category).uniq.compact.sort
+    @program_categories = @programs_all.pluck(:program_category).uniq.compact.sort
 
     if @program_categories.present?
       @program_categories.prepend(["All"])
@@ -67,13 +67,14 @@ class SearchApi::DashboardController < ApplicationController
 
   def set_default
     @banks = Bank.all
-    @all_programs = Program.all
-    @term_list = @all_programs.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
+    @programs_all = load_programs_all
+    # @programs_all = Program.all
+    @term_list = @programs_all.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
     # @term_list = (Program.pluck(:term).reject(&:blank?).uniq.map{|n| n if n.to_s.length < 3}.reject(&:blank?).push(5,10,15,20,25,30).uniq.sort).map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
-    @arm_advanced_list = @all_programs.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
+    @arm_advanced_list = @programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
     # @arm_advanced_list = Program.pluck(:arm_advanced).push("5-5").uniq.compact.reject { |c| c.empty? }.map{|c| [c]}
-    @arm_caps_list = @all_programs.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
-    # @arm_caps_list = Program.pluck(:arm_caps).push("3-2-5").uniq.compact.reject { |c| c.empty? }.map{|c| [c]}
+    @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
+  # @arm_caps_list = Program.pluck(:arm_caps).push("3-2-5").uniq.compact.reject { |c| c.empty? }.map{|c| [c]}
     @base_rate = 0.0
     @filter_data = {}
     @filter_not_nil = {}
@@ -121,6 +122,22 @@ class SearchApi::DashboardController < ApplicationController
     @cltv = (7501..8000).to_a.map{|e| e.to_f/100}
 
     @credit_score = (700..719).to_a
+  end
+
+  def load_programs_all
+    if params[:loan_type] == "ARM"
+      if params[:arm_basic].present?
+        @programs_all = Program.where(loan_purpose: params[:loan_purpose]).where(loan_type: "ARM").where(arm_basic: "5")
+      else
+        @programs_all = Program.where( loan_purpose = params[:loan_purpose] ).where( loan_type = "ARM" )
+      end
+    else
+      if params[:term] == "All"
+        @programs_all = Program.where(loan_purpose: params[:loan_purpose]).where(loan_type: params[:loan_type])
+      else
+        @programs_all = Program.where(loan_purpose: "Purchase", loan_type: "Fixed",term: 30)
+      end
+    end
   end
 
   def modified_ltv_cltv_credit_score
@@ -365,10 +382,10 @@ class SearchApi::DashboardController < ApplicationController
     term_all_programs = []
     arm_all_programs = []
     arm_hash = {}
-    @all_programs = @all_programs.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
+    @programs_all = @programs_all.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
 
-      term_all_programs = @all_programs.where.not(loan_type: "ARM")
-      arm_all_programs = @all_programs.where(loan_type: "ARM")
+      term_all_programs = @programs_all.where.not(loan_type: "ARM")
+      arm_all_programs = @programs_all.where(loan_type: "ARM")
 
       %i[arm_basic arm_advanced arm_caps arm_margin arm_benchmark].each do |term|
         if (@filter_not_nil.keys.include?(term))
@@ -522,7 +539,7 @@ class SearchApi::DashboardController < ApplicationController
   # end
 
   def search_programs_with_selected_loan_type
-    program_list = @all_programs.where.not(@filter_not_nil)
+    program_list = @programs_all.where.not(@filter_not_nil)
     program_list = program_list.where(@filter_data.except(:term))
     program_list2 = []
     if program_list.present?
