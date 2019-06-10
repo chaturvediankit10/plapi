@@ -2,9 +2,9 @@ class SearchApi::DashboardController < ApplicationController
   layout "application"
   before_action :set_default
 
-  # def index
-  #   list_of_banks_and_programs_with_search_results
-  # end
+  def index
+    list_of_banks_and_programs_with_search_results
+  end
 
   def list_of_banks_and_programs_with_search_results
     @time = Benchmark.measure {
@@ -53,11 +53,11 @@ class SearchApi::DashboardController < ApplicationController
 
   def set_default_values_without_submition
     @filter_not_nil[:term] = nil
-    @filter_not_nil[:arm_basic] = nil
-    @filter_not_nil[:arm_caps] = nil
-    @filter_not_nil[:arm_advanced] = nil
-    @filter_not_nil[:arm_benchmark] = nil
-    @filter_not_nil[:arm_margin] = nil
+    # @filter_not_nil[:arm_basic] = nil
+    # @filter_not_nil[:arm_caps] = nil
+    # @filter_not_nil[:arm_advanced] = nil
+    # @filter_not_nil[:arm_benchmark] = nil
+    # @filter_not_nil[:arm_margin] = nil
     set_flag_loan_type(true)
   end
 
