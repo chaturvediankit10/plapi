@@ -135,7 +135,7 @@
                       <div class="col-md-6">
                         <div class="form-group">
                           <label>Loan Purpose</label>
-                            <%= select_tag 'loan_purpose', options_for_select(Program::LOAN_PURPOSE.flatten.sort_by!{ |m| m.downcase }, (params[:loan_purpose] rescue nil)), { prompt: 'Select Loan Purpose', :class=> "form-control" }%>
+                            <%= select_tag 'loan_purpose', options_for_select(Program::LOAN_PURPOSE.flatten.sort_by!{ |m| m.downcase }, (params[:loan_purpose] rescue nil)), { :class=> "form-control" }%>
                           <span class="error-loan-purpose">Please Select Refinance</span>
                         </div>
                       </div>
@@ -570,7 +570,7 @@
     function setArmDefaultValues(){
       $('#arm_benchmark').val('All')
       $('#arm_margin').val('All')
-      $('#arm_advanced').val('All')
+      $('#arm_advanced').val('')
       $('#arm_caps').val('All')
       $('#arm_basic').val('5/1')
     }
@@ -579,7 +579,7 @@
       $('#term').val('All')
       $('#arm_benchmark').val('All')
       $('#arm_margin').val('All')
-      $('#arm_advanced').val('All')
+      $('#arm_advanced').val('')
       $('#arm_caps').val('All')
       $('#arm_basic').val('All')
     }
@@ -718,6 +718,18 @@
       $('#fannie_mae').prop('checked', true)
   })
 
+  $("#arm_advanced").on('click', function(e){
+      if ($(this).val()==""){
+       $('#arm_basic').val('5/1')
+      }else{
+       $('#arm_basic').val('')
+      }
+   });
+
+   $("#arm_basic").on('click', function(e){
+     $('#arm_advanced').val('')
+   });
+
   //when select freddie_mac_product freddie_mac will be true
   $('#freddie_mac_product').change(function(){
     if ($(this).val() == ""){
@@ -825,7 +837,7 @@
         $('#term').val('')
         $('#arm_benchmark').val('All')
         $('#arm_margin').val('All')
-        $('#arm_advanced').val('All')
+        $('#arm_advanced').val('')
         $('#arm_caps').val('All')
         $('#arm_basic').val('5/1')
         $(".arm-basic").hide();
