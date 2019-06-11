@@ -125,19 +125,20 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def load_programs_all
-    if params[:loan_type] == "ARM"
-      if params[:arm_basic].present?
-        @programs_all = Program.where(loan_purpose: params[:loan_purpose]).where(loan_type: "ARM").where(arm_basic: "5")
-      else
-        @programs_all = Program.where( loan_purpose = params[:loan_purpose] ).where( loan_type = "ARM" )
-      end
-    else
-      if params[:term] == "All"
-        @programs_all = Program.where(loan_purpose: params[:loan_purpose]).where(loan_type: params[:loan_type])
-      else
-        @programs_all = Program.where(loan_purpose: "Purchase", loan_type: "Fixed",term: 30)
-      end
-    end
+   if params[:loan_type] == "ARM"
+     if params[:arm_basic].present?
+       @programs_all = Program.where(loan_purpose: params[:loan_purpose]).where(loan_type: "ARM").where(arm_basic: "5")
+     else
+       @programs_all = Program.where( loan_purpose = params[:loan_purpose] ).where( loan_type = "ARM" )
+     end
+   else
+     if params[:term] == "All"
+       @programs_all = Program.where(loan_purpose: params[:loan_purpose]).where(loan_type: params[:loan_type])
+     else
+       term = params[:term].present? ? params[:term].to_i : 30
+       @programs_all = Program.where(loan_purpose: "Purchase", loan_type: "Fixed",term: term)
+     end
+   end
   end
 
   def modified_ltv_cltv_credit_score
