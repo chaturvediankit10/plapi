@@ -1,6 +1,6 @@
 class SearchApi::DashboardController < ApplicationController
   layout "application"
-  before_action :set_default
+  before_action :set_default, except: [:fetch_programs, :fetch_programs_by_bank]
 
   def index
     list_of_banks_and_programs_with_search_results
@@ -11,18 +11,14 @@ class SearchApi::DashboardController < ApplicationController
       @all_banks_name = @banks.pluck(:name)
       if params["commit"].present?
         set_variable
-      else
-        set_default_values_without_submition
       end
-      find_base_rate
-      fetch_programs_by_bank(true)
+      search_programs_with_selected_loan_type
     }
     puts "Query Time  #{@time.real}"
   end
 
   def fetch_programs_by_bank(html_type=false)
-    
-
+    @programs_all = load_programs_all
     if params[:bank_name].present?
       @programs_all = @programs_all.where(bank_name: params[:bank_name]) unless params[:bank_name].eql?('All')
     end
@@ -38,43 +34,30 @@ class SearchApi::DashboardController < ApplicationController
     @program_names = @programs_all.pluck(:program_name).uniq.compact.sort
     @loan_categories = @programs_all.pluck(:loan_category).uniq.compact.sort
     @program_categories = @programs_all.pluck(:program_category).uniq.compact.sort
-
-    if @program_categories.present?
-      @program_categories.prepend(["All"])
-    else
-      @program_categories << "No Category"
-    end
-
-    # N+1 query, there is unrequired loop, we need to remove that, so that it will load quickly
+    add_default_loan_cat
     render json: {program_list: @program_names.map{ |lc| {name: lc}}, loan_category_list: @loan_categories.map{ |lc| {name: lc}}, pro_category_list: @program_categories.map{ |lc| {name: lc}}} unless html_type
   end
 
   private
 
-  def set_default_values_without_submition
-    @filter_not_nil[:term] = nil
-    # @filter_not_nil[:arm_basic] = nil
-    # @filter_not_nil[:arm_caps] = nil
-    # @filter_not_nil[:arm_advanced] = nil
-    # @filter_not_nil[:arm_benchmark] = nil
-    # @filter_not_nil[:arm_margin] = nil
-    set_flag_loan_type(true)
-  end
-
-  def set_flag_loan_type(flag)
-    @flag_loan_type = flag
+  def add_default_loan_cat
+    if @program_categories.present?
+      @program_categories.prepend(["All"])
+    else
+      @program_categories << "No Category"
+    end
   end
 
   def set_default
     @banks = Bank.all
     @programs_all = load_programs_all
-    # @programs_all = Program.all
+    @program_names = @programs_all.pluck(:program_name).uniq.compact.sort
+    @loan_categories = @programs_all.pluck(:loan_category).uniq.compact.sort
+    @program_categories = @programs_all.pluck(:program_category).uniq.compact.sort
+    add_default_loan_cat
     @term_list = @programs_all.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
-    # @term_list = (Program.pluck(:term).reject(&:blank?).uniq.map{|n| n if n.to_s.length < 3}.reject(&:blank?).push(5,10,15,20,25,30).uniq.sort).map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
     @arm_advanced_list = @programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
-    # @arm_advanced_list = Program.pluck(:arm_advanced).push("5-5").uniq.compact.reject { |c| c.empty? }.map{|c| [c]}
     @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
-  # @arm_caps_list = Program.pluck(:arm_caps).push("3-2-5").uniq.compact.reject { |c| c.empty? }.map{|c| [c]}
     @base_rate = 0.0
     @filter_data = {}
     @filter_not_nil = {}
@@ -101,44 +84,39 @@ class SearchApi::DashboardController < ApplicationController
     @state = "All"
     @result = []
     @loan_amount = "0 - 50000"
-    @ltv1 = "65.01 - 70.00"
-    @credit_score1 = "700-719"
+    @set_ltv = params[:ltv].present? ? params[:ltv] : "65.01 - 70.00"
+    @set_credit_score = params[:credit_score].present? ? params[:credit_score] : "700-719"
     @dti = "25.6%"
     @loan_purpose = "Purchase"
     @home_price = "300000"
     @down_payment = "50000"
     @coverage = "30.5%"
     @margin = "2.0"
-    # ltv_range = 65.01..70.0
-    # array_data = []
-    # ltv_range.step(0.01) { |f| array_data << f.round(2) } rescue nil
-    # @ltv = array_data.try(:uniq)
-
-    # cltv_range = 75.01..80.0
-    # array_data = []
-    # cltv_range.step(0.01) { |f| array_data << f.round(2) } rescue nil
-    # @cltv = array_data.try(:uniq)
     @ltv = (6500..7000).to_a.map{|e| e.to_f/100}
     @cltv = (7501..8000).to_a.map{|e| e.to_f/100}
-
     @credit_score = (700..719).to_a
   end
 
   def load_programs_all
    if params[:loan_type] == "ARM"
-     if params[:arm_basic].present?
-       @programs_all = Program.where(loan_purpose: params[:loan_purpose]).where(loan_type: "ARM").where(arm_basic: "5")
+     if params[:arm_basic].present? && params[:arm_basic] != "All"
+       arm_basic = split_arm_basic(params[:arm_basic])
+       @programs_all = Program.where(loan_purpose: params[:loan_purpose], loan_type: params[:loan_type], arm_basic: arm_basic)
      else
-       @programs_all = Program.where( loan_purpose = params[:loan_purpose] ).where( loan_type = "ARM" )
+       @programs_all = Program.where(loan_purpose: params[:loan_purpose], loan_type: params[:loan_type])
      end
    else
      if params[:term] == "All"
-       @programs_all = Program.where(loan_purpose: params[:loan_purpose]).where(loan_type: params[:loan_type])
+        @programs_all = Program.where(loan_purpose: params[:loan_purpose], loan_type: params[:loan_type])
      else
-       term = params[:term].present? ? params[:term].to_i : 30
-       @programs_all = Program.where(loan_purpose: "Purchase", loan_type: "Fixed",term: term)
+        @tab_term = params[:term].present? ? params[:term].to_i : 30
+        @programs_all = Program.where(loan_purpose: "Purchase", loan_type: "Fixed", term: @tab_term)
      end
    end
+  end
+
+  def split_arm_basic(arm)
+    arm.split("/").first
   end
 
   def modified_ltv_cltv_credit_score
@@ -171,7 +149,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def modified_condition
-    %w[fannie_mae_product freddie_mac_product bank_name program_name pro_category loan_category loan_purpose].each do |key|
+    %w[fannie_mae_product freddie_mac_product bank_name program_name pro_category loan_category loan_purpose loan_type term loan_size].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
         unless (key_value == "All")
@@ -182,15 +160,17 @@ class SearchApi::DashboardController < ApplicationController
           else
             if (key == "program_name")
               @filter_data[key.to_sym] = key_value.remove("\r")
+            elsif key == "term"
+              @filter_data[key.to_sym] = key_value.to_i
             else
               @filter_data[key.to_sym] = key_value
             end
           end
-          if %w[fannie_mae_product freddie_mac_product pro_category loan_category loan_purpose].include?(key)
+          if %w[fannie_mae_product freddie_mac_product pro_category loan_category loan_purpose loan_type term].include?(key)
             instance_variable_set("@#{key}", key_value)
           end
         else
-          if %w[fannie_mae_product freddie_mac_product loan_purpose].include?(key)
+          if %w[fannie_mae_product freddie_mac_product term loan_size].include?(key)
             @filter_not_nil[key.to_sym] = nil
           end
         end
@@ -208,83 +188,33 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def modified_variables
-    %w[state property_type financing_type refinance_option refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti].each do |key|
-      key_value = params[key.to_sym]
+    %w[state property_type financing_type refinance_option refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price].each do |key|
+      if ((key == "home_price") || (key == "down_payment"))
+        key_value = params[key.to_sym].tr(',', '')
+      else
+        key_value = params[key.to_sym]
+      end
       instance_variable_set("@#{key}", key_value) if key_value.present?
     end
   end
 
-  def set_term
-    if params[:term].present?
-      if (params[:term] == "All")
-        @filter_not_nil[:term] = nil
-      else
-        @filter_data[:term] = params[:term].to_i
-        @term = params[:term]
-        @program_term = params[:term].to_i
-      end
-    end
-  end
-
-  def set_arm_basic
-    if params[:arm_basic].present?
-      if (params[:arm_basic] == "All")
-        @filter_not_nil[:arm_basic] = nil
-      else
-        if params[:arm_basic].include?("/")
-          @filter_data[:arm_basic] = params[:arm_basic].split("/").first
-          @arm_basic = params[:arm_basic]
+  def set_arm_options
+    %w[term arm_basic arm_advanced arm_caps arm_benchmark arm_margin].each do |key|
+      if params.has_key?(key)
+        key_value = params[key.to_sym]
+        if key_value == "All"
+          @filter_not_nil[key] = nil
+        else
+          if key == "arm_basic"
+            @filter_data[:arm_basic] = split_arm_basic(params[:arm_basic])
+            @arm_basic = params[:arm_basic]
+          else
+            instance_variable_set("@#{key}", key_value) if key_value.present?
+            @filter_data[key] = key_value
+          end
         end
       end
     end
-  end
-
-  def set_arm_advanced
-    if params[:arm_advanced].present?
-      if params[:arm_advanced] == "All"
-        @filter_not_nil[:arm_advanced] = nil
-      else
-        @arm_advanced = params[:arm_advanced]
-        @filter_data[:arm_advanced] = params[:arm_advanced]
-      end
-    end
-  end
-
-  def set_arm_caps
-    if params[:arm_caps].present?
-      if params[:arm_caps] == "All"
-        @filter_not_nil[:arm_caps] = nil
-      else
-        @arm_caps = params[:arm_caps]
-        @filter_data[:arm_caps] = params[:arm_caps]
-      end
-    end
-  end
-
-  def set_arm_benchmark
-    if params[:arm_benchmark].present?
-      if params[:arm_benchmark] == "All"
-        @filter_not_nil[:arm_benchmark] = nil
-      else
-        @arm_benchmark = params[:arm_benchmark]
-        @filter_data[:arm_benchmark] = params[:arm_benchmark]
-      end
-    end
-  end
-
-  def set_arm_margin
-    if params[:arm_margin].present?
-      if params[:arm_margin] == "All"
-        @filter_not_nil[:arm_margin] = nil
-      else
-        @arm_margin = params[:arm_margin].to_f
-        @filter_data[:arm_margin] = params[:arm_margin].to_f
-      end
-    end
-  end
-
-  def set_flag_loan_type(flag)
-    @flag_loan_type = flag
   end
 
   def set_variable
@@ -292,50 +222,12 @@ class SearchApi::DashboardController < ApplicationController
     modified_condition
     modified_true_condition
     modified_variables
-    if params[:loan_type].present?
-      @loan_type = params[:loan_type]
-      if params[:loan_type] == "All"
-        @filter_not_nil[:loan_type] = nil
-        set_flag_loan_type(true)
-        set_term
-        set_arm_basic
-        set_arm_advanced
-        set_arm_caps
-        set_arm_benchmark
-        set_arm_margin
-      else
-        @filter_data[:loan_type] = params[:loan_type]
-        if params[:loan_type] =="ARM"
-          set_flag_loan_type(false)
-          set_arm_basic
-          set_arm_advanced
-          set_arm_caps
-          set_arm_benchmark
-          set_arm_margin
-        end
-        if params[:loan_type] !="ARM"
-          set_term
-        end
-      end
-    else
-      set_flag_loan_type(true)
-    end
-
-    if params[:loan_size].present?
-      if params[:loan_size] == "All"
-        @filter_not_nil[:loan_size] = nil
-      end
-    end
-    @credit_score1 = params[:credit_score].present? ? params[:credit_score] : ""
-    @ltv1 = params[:ltv].present? ? params[:ltv] : ""
-    @home_price = params[:home_price].present? ? params[:home_price].tr(',', '') : "300000"
-    @down_payment = params[:down_payment].present? ? params[:down_payment].tr(',', '') : "50000"
   end
 
   def find_programs_on_term_based(programs, find_term)
     program_list = []
     programs.each do |program|
-       pro_term = program.term
+      pro_term = program.term
       if (pro_term.to_s.length <=2 )
         if (pro_term == find_term)
           program_list << program
@@ -377,211 +269,20 @@ class SearchApi::DashboardController < ApplicationController
     end
     return program_list
   end
-
-  def search_programs_with_loan_type_all
-    program_list = []
-    term_all_programs = []
-    arm_all_programs = []
-    arm_hash = {}
-    @programs_all = @programs_all.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
-
-      term_all_programs = @programs_all.where.not(loan_type: "ARM")
-      arm_all_programs = @programs_all.where(loan_type: "ARM")
-
-      %i[arm_basic arm_advanced arm_caps arm_margin arm_benchmark].each do |term|
-        if (@filter_not_nil.keys.include?(term))
-          arm_hash[term] = nil
-        end
-      end
-      arm_all_programs = arm_all_programs.where.not(arm_hash)
-      
-      if (@filter_data.keys & [:term]).any?
-        term_all_programs = find_programs_on_term_based(term_all_programs, @filter_data[:term])
-      end
-      program_list = (term_all_programs + arm_all_programs)
-
-
-      program_list = calculate_base_rate_of_selected_programs(program_list)
-    total_searched_program = []
-
-    if program_list.present?
-      if params[:loan_size].present?
-        if params[:loan_size] != "All"
-          total_searched_program = []
-          program_list = program_list.where.not(loan_size: nil)
-            program_list.each do |pro|
-              if(pro.loan_size.split("&").map{ |l| l.strip }.include?(params[:loan_size]))
-                total_searched_program << pro
-              end
-            end
-        else
-          total_searched_program = program_list
-        end
-      else
-        total_searched_program = program_list
-      end
-    end
-
-    @result= []
-    if total_searched_program.present?
-      @result = find_adjustments_by_searched_programs(total_searched_program, @lock_period, @arm_basic, @arm_advanced, @arm_caps, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
-    end
-  end
-  # def search_programs_with_loan_type_all
-  #   term_programs = []
-  #   arm_programs = []
-  #   if (@filter_not_nil.keys & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark, :term]).any?
-  #     term_programs = Program.where.not(loan_type: "ARM")
-  #     arm_all_programs = Program.where(loan_type: "ARM")
-
-  #     %i[arm_basic arm_advanced arm_caps arm_margin arm_benchmark].each do |term|
-  #       if (@filter_not_nil.keys.include?(term))
-  #         arm_programs << arm_all_programs.where.not(term => nil)
-  #       end
-  #     end
-  #     arm_programs = arm_programs.flatten.compact.uniq
-  #   else
-  #     if (@filter_not_nil.keys.include?(:term))
-  #       term_programs = Program.where.not(loan_type: "ARM")
-  #     elsif (@filter_not_nil.keys.include?(:arm_basic || :arm_advanced || :arm_margin || :arm_benchmark || :arm_caps))
-  #       arm_programs = Program.where(loan_type: "ARM")
-  #     else
-  #       term_programs = Program.where.not(loan_type: "ARM")
-  #       arm_programs = Program.where(loan_type: "ARM")
-  #     end
-  #   end
-  #   if (@filter_data.keys & [:term]).any?
-  #     term_programs1 = Program.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
-  #     term_programs = find_programs_on_term_based(term_programs1, @filter_data[:term])
-  #     if (@filter_data.keys & [:term] & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark, :term]).any?
-  #       arm_programs = arm_all_programs.where(@filter_data.except(:term))
-  #     end
-  #   elsif (@filter_data.keys & [:arm_basic, :arm_advanced, :arm_caps, :arm_margin, :arm_benchmark]).any?
-  #     arm_programs = arm_all_programs.where(@filter_data.except(:term))
-  #   end
-  #   if arm_programs.present?
-  #     arm_ids = arm_programs.pluck(:id)
-  #     arm_programs = Program.where(id: arm_ids).where(@filter_data.except(:term))
-  #     # arm_programs = arm_programs.where(@filter_data.except(:term))
-  #   end
-
-  #   if term_programs.present?
-  #     term_ids = term_programs.pluck(:id)
-  #     term_programs = Program.where(id: term_ids).where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
-  #     # term_programs = term_programs.where(@filter_data.except(:arm_basic, :arm_advanced, :arm_caps, :arm_benchmark, :arm_margin, :term))
-  #   end
-  #   total_searched_program1 = calculate_base_rate_of_selected_programs((term_programs + arm_programs).uniq)
-  #   total_searched_program = []
-
-  #   if total_searched_program1.present?
-  #     if params[:loan_size].present?
-  #       if params[:loan_size] == "All"
-  #         total_searched_program = total_searched_program1
-  #       else
-  #         @loan_size = params[:loan_size]
-  #         # total_searched_program1 = total_searched_program1.where.not(loan_size: nil)
-  #         total_searched_program1 = total_searched_program1.map{ |pro| pro if pro.loan_size!=nil}.compact
-  #         total_searched_program1.each do |pro|
-  #           if(pro.loan_size.split("&").map{ |l| l.strip }.include?(params[:loan_size]))
-  #             total_searched_program << pro
-  #           end
-  #         end
-  #       end
-  #     else
-  #       total_searched_program = total_searched_program1
-  #     end
-  #   end
-  #   @result= []
-  #   if total_searched_program.present?
-  #     @result = find_adjustments_by_searched_programs(total_searched_program, @lock_period, @arm_basic, @arm_advanced, @arm_caps, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
-  #   end
-  # end
-
-  # def search_programs_with_selected_loan_type
-  #   @program_list = Program.where(@filter_data.except(:term))
-  #   @program_list = @program_list.where.not(@filter_not_nil)
-  #   @program_list2 = []
-  #   if @program_list.present?
-  #     if @program_term.present?
-  #       @program_list = @program_list.where.not(term:nil)
-  #       @program_list2 = find_programs_on_term_based(@program_list, @program_term)
-  #     else
-  #       @program_list2 = @program_list
-  #     end
-
-  #     if @program_list2.present?
-  #       @program_list3 = []
-  #       if params[:loan_size].present?
-  #         if params[:loan_size] == "All"
-  #           @program_list3 = @program_list2
-  #         else
-  #           @loan_size = params[:loan_size]
-  #           @program_list2 = @program_list2.map{ |pro| pro if pro.loan_size!=nil}.compact
-  #           @program_list2.each do |pro|
-  #             if(pro.loan_size.split("and").map{ |l| l.strip }.include?(params[:loan_size]))
-  #               @program_list3 << pro
-  #             end
-  #           end
-  #         end
-  #       else
-  #         @program_list3 = @program_list2
-  #       end
-  #     end
-
-  #     @programs =[]
-  #     if @program_list3.present?
-  #       @programs = calculate_base_rate_of_selected_programs(@program_list3)
-  #     end
-  #     @result= []
-  #     if @programs.present?
-  #       @result = find_adjustments_by_searched_programs(@programs, @lock_period, @arm_basic, @arm_advanced, @arm_caps, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
-  #     end
-  #   end
-  # end
-
+ 
   def search_programs_with_selected_loan_type
     program_list = @programs_all.where.not(@filter_not_nil)
     program_list = program_list.where(@filter_data.except(:term))
-    program_list2 = []
-    if program_list.present?
 
-      if program_list.present?
-        if params[:loan_size].present?
-          if params[:loan_size] != "All"
-            program_list = program_list.where.not(loan_size: nil).compact
-              program_list.each do |pro|
-                if(pro.loan_size.split("&").map{ |l| l.strip }.include?(params[:loan_size]))
-                  program_list2 << pro
-                end
-              end
-          else
-            program_list2 = program_list
-          end
-        else
-          program_list2 = program_list
-        end
-      end
-
-      if ((@filter_data.keys & [:term]).any? && program_list2.present?)
-        program_list2 = find_programs_on_term_based(program_list2, @program_term)
-      end
-
-      @programs =[]
-      if program_list2.present?
-        program_list2 = calculate_base_rate_of_selected_programs(program_list2)
-      end
-      @result= []
-      if program_list2.present?
-        @result = find_adjustments_by_searched_programs(program_list2, @lock_period, @arm_basic, @arm_advanced, @arm_caps, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
-      end
+    if (program_list.present? && (@filter_data.keys & [:loan_size]).any?)
+      program_list = program_list.select{ |m| m if m.loan_size.split("&").map{ |l| l.strip }.include?(@filter_data[:loan_size]) }
     end
-  end
-
-  def find_base_rate
-    if (@flag_loan_type)
-      search_programs_with_loan_type_all
-    else
-      search_programs_with_selected_loan_type
+    if program_list.present?
+      program_list = calculate_base_rate_of_selected_programs(program_list)
+    end
+    @result= []
+    if program_list.present?
+      @result = find_adjustments_by_searched_programs(program_list, @lock_period, @arm_basic, @arm_advanced, @arm_caps, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
     end
   end
 
