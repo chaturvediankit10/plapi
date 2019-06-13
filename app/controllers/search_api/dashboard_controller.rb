@@ -190,7 +190,7 @@ class SearchApi::DashboardController < ApplicationController
   def modified_variables
     %w[state property_type financing_type refinance_option refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price].each do |key|
       if ((key == "home_price") || (key == "down_payment"))
-        key_value = params[key.to_sym].tr(',', '')
+        key_value = params[key.to_sym].present? ? params[key.to_sym].tr(',', '') : nil
       else
         key_value = params[key.to_sym]
       end
