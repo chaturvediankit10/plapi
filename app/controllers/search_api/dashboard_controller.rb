@@ -99,6 +99,7 @@ class SearchApi::DashboardController < ApplicationController
 
   def load_programs_all
    if params[:loan_type] == "ARM"
+      set_arm_options
      if params[:arm_basic].present? && params[:arm_basic] != "All"
        arm_basic = split_arm_basic(params[:arm_basic])
        @programs_all = Program.where(loan_purpose: params[:loan_purpose], loan_type: params[:loan_type], arm_basic: arm_basic)
@@ -199,7 +200,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def set_arm_options
-    %w[term arm_basic arm_advanced arm_caps arm_benchmark arm_margin].each do |key|
+    %w[arm_basic arm_advanced arm_caps arm_benchmark arm_margin].each do |key|
       if params.has_key?(key)
         key_value = params[key.to_sym]
         if key_value == "All"
@@ -210,7 +211,7 @@ class SearchApi::DashboardController < ApplicationController
             @arm_basic = params[:arm_basic]
           else
             instance_variable_set("@#{key}", key_value) if key_value.present?
-            @filter_data[key] = key_value
+            @filter_data[key] = adj_key_hash_required_value
           end
         end
       end
