@@ -487,32 +487,29 @@ class SearchApi::DashboardController < ApplicationController
         end
       end
 
-      air_values = []
+      air_and_point_value = {}
+      loan_amount = (@home_price.to_i - @down_payment.to_i).to_f rescue nil
+
       if hash_obj[:adj_points].present?
-        @point = '0'
+        @point = 0
         if params[:point].present?
-          @point = params[:point]
+          @point = params[:point].to_i
         end
-        air_values = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], @point.to_i)
-        if air_values.try(:last).present?
-          hash_obj[:air] = air_values.try(:last).try(:to_f)
-          hash_obj[:apr] = calculate_apr_value(hash_obj[:air])
-        else
-          hash_obj[:air] = 0.0
+        air_and_point_value = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], @point)
+
+        if air_and_point_value.present?
+          hash_obj[:air] = air_and_point_value['air'].try(:to_f)
+          hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
+          hash_obj[:apr] = calculate_apr_value(@point, hash_obj[:monthly_payment], loan_amount, @term.to_i)
         end
       end
 
       hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f)) rescue nil
 
-      loan_amount = (@home_price.to_i - @down_payment.to_i) rescue nil
-
-      if air_values.try(:first).present?
-        hash_obj[:closing_cost] = ((air_values.try(:first).try(:to_f)/100)*loan_amount) rescue nil
-      else
-        hash_obj[:closing_cost] = 0.0
+      if air_and_point_value['air_point'].present?
+        hash_obj[:closing_cost] = ((air_and_point_value['air_point'].try(:to_f)/100)*loan_amount) rescue nil
       end
 
-      hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
       value_result << hash_obj unless (hash_obj[:air] == 0.0)
       # value_result << hash_obj
 
@@ -520,7 +517,23 @@ class SearchApi::DashboardController < ApplicationController
                    :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :apr => 0.0
                  }
     end
+
+    benchmark_monthly_payment = calculate_savings_benchmark(value_result.sort_by { |h| h[:air] } || [])
+
+    value_result = value_result.each do |result|
+      result[:saving] = calculate_each_savings(result[:monthly_payment], benchmark_monthly_payment, @term.to_i)
+    end
+
     return value_result.sort_by { |h| h[:air] } || []
+  end
+
+  def calculate_each_savings(monthly_payment, benchmark_monthly_payment, term)
+    return (benchmark_monthly_payment - monthly_payment) * term * 12
+  end
+
+  def calculate_savings_benchmark(results)
+    size = results.count
+    benchmark_monthly_payment = results[size*0.8][:monthly_payment]
   end
 
   def loan_size_key_of_adjustment(loan_size_keys, value_loan_size)
@@ -771,18 +784,15 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def adjusted_interest_rate_calculate(pro, adj_points, point)
-    air_key = []
+    air_key = {}
     base_rate_keys = pro.base_rate.keys
     total_adj = adj_points.present? ? adj_points.sum : 0
     yellow_keys = pro.base_rate.values.map{|a| a[@lock_period]}
     orange_keys = yellow_keys.map{|a| (a.to_f + total_adj.to_f).round(3)}
     air_value = orange_keys.map{|a| a.to_f if a.to_i == point && a.positive?}.compact.min
     if air_value.present?
-      air_key << air_value
-      air_key << base_rate_keys[orange_keys.index(air_value)]
-    else
-      air_key << 0.0
-      air_key << 0.0
+      air_key['air_point'] = air_value
+      air_key['air'] = base_rate_keys[orange_keys.index(air_value)]
     end
     return air_key
   end
@@ -799,7 +809,17 @@ class SearchApi::DashboardController < ApplicationController
     return monthly_payment
   end
 
-  def calculate_apr_value(air_value)
-    ( 1 + air_value / 30 ) ** 365 - 1 rescue nil
+  # def calculate_apr_value(air_value)
+  #   ( 1 + air_value / 30 ) ** 365 - 1 rescue nil
+  # end
+
+  def calculate_apr_value(points, monthly_payment, loan_amount, term)
+    num_months    = term * 12.0
+    fees          = points / 100.0 * loan_amount
+    interest_paid = monthly_payment * num_months - loan_amount
+    number_days   = num_months * 30.0
+
+    return (((fees + interest_paid) / loan_amount) / number_days ) * 365.0 * 100.0
   end
+
 end
