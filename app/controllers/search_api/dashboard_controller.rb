@@ -50,14 +50,6 @@ class SearchApi::DashboardController < ApplicationController
 
   def set_default
     @banks = Bank.all
-    @programs_all = load_programs_all
-    @program_names = @programs_all.pluck(:program_name).uniq.compact.sort
-    @loan_categories = @programs_all.pluck(:loan_category).uniq.compact.sort
-    @program_categories = @programs_all.pluck(:program_category).uniq.compact.sort
-    add_default_loan_cat
-    @term_list = @programs_all.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
-    @arm_advanced_list = @programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
-    @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
     @base_rate = 0.0
     @filter_data = {}
     @filter_not_nil = {}
@@ -95,6 +87,15 @@ class SearchApi::DashboardController < ApplicationController
     @ltv = (6500..7000).to_a.map{|e| e.to_f/100}
     @cltv = (7501..8000).to_a.map{|e| e.to_f/100}
     @credit_score = (700..719).to_a
+
+    @programs_all = load_programs_all
+    @program_names = @programs_all.pluck(:program_name).uniq.compact.sort
+    @loan_categories = @programs_all.pluck(:loan_category).uniq.compact.sort
+    @program_categories = @programs_all.pluck(:program_category).uniq.compact.sort
+    add_default_loan_cat
+    @term_list = @programs_all.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
+    @arm_advanced_list = @programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
+    @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
   end
 
   def load_programs_all
@@ -203,15 +204,17 @@ class SearchApi::DashboardController < ApplicationController
     %w[arm_basic arm_advanced arm_caps arm_benchmark arm_margin].each do |key|
       if params.has_key?(key)
         key_value = params[key.to_sym]
-        if key_value == "All"
-          @filter_not_nil[key] = nil
-        else
-          if key == "arm_basic"
-            @filter_data[:arm_basic] = split_arm_basic(params[:arm_basic])
-            @arm_basic = params[:arm_basic]
+        if key_value.present?
+          if key_value == "All"
+            @filter_not_nil[key] = nil
           else
-            instance_variable_set("@#{key}", key_value) if key_value.present?
-            @filter_data[key] = adj_key_hash_required_value
+            if key == "arm_basic"
+              @filter_data[:arm_basic] = split_arm_basic(params[:arm_basic])
+              @arm_basic = params[:arm_basic]
+            else
+              instance_variable_set("@#{key}", key_value) if key_value.present?
+              @filter_data[key] = adj_key_hash_required_value
+            end
           end
         end
       end
