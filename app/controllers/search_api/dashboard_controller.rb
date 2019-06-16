@@ -522,22 +522,33 @@ class SearchApi::DashboardController < ApplicationController
                    :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0
                  }
     end
+    results = value_result.sort_by { |h| h[:air] } || []
 
-    benchmark_monthly_payment = calculate_savings_benchmark(value_result.sort_by { |h| h[:air] } || [])
-
-    value_result = value_result.each do |result|
-      result[:saving] = calculate_each_savings(result[:monthly_payment], benchmark_monthly_payment, @term.to_i)
+    results.each do |result|
+      benchmark_costs = calculate_savings_benchmark(results, result[:closing_cost], @term.to_i)
+      result[:saving] = calculate_each_savings(benchmark_costs, result, @term.to_i, result[:closing_cost])    
     end
-    return value_result.sort_by { |h| h[:air] } || []
+    return results || []
   end
 
-  def calculate_each_savings(monthly_payment, benchmark_monthly_payment, term)
-    return (benchmark_monthly_payment - monthly_payment) * term * 12
+  # def calculate_each_savings(monthly_payment, benchmark_monthly_payment, term)
+  #   return (benchmark_monthly_payment - monthly_payment) * term * 12
+  # end
+
+  # def calculate_savings_benchmark(results)
+  #   size = results.count
+  #   benchmark_monthly_payment = results[size*0.8][:monthly_payment]
+  # end
+
+
+  def calculate_savings_benchmark(results, total_closing_cost, term)
+    benchmark_result = results[results.count*0.8]
+    return benchmark_result[:monthly_payment] * term.to_i * 12 + total_closing_cost
   end
 
-  def calculate_savings_benchmark(results)
-    size = results.count
-    benchmark_monthly_payment = results[size*0.8][:monthly_payment]
+  def calculate_each_savings(benchmark_costs, result, term, total_closing_cost )
+    current_costs = result[:monthly_payment] * term.to_i * 12 + total_closing_cost
+    return benchmark_costs - current_costs
   end
 
   def loan_size_key_of_adjustment(loan_size_keys, value_loan_size)
