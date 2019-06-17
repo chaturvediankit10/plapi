@@ -268,8 +268,10 @@ class SearchApi::DashboardController < ApplicationController
 
         if(base_rate_keys.include?(interest_rate))
           rate_index = base_rate_keys.index(interest_rate)
-          if(program.base_rate[key_list[rate_index]].keys.include?(@lock_period))
-              program_list << program
+          if( ( source == 0 && program.base_rate[key_list[ 0 ]].keys.include?( @lock_period ) ) ||
+              ( source == 1 && program.base_rate[key_list[rate_index]].keys.include?( @lock_period ) )
+            )
+            program_list << program
           end
         end
       end
@@ -289,7 +291,7 @@ class SearchApi::DashboardController < ApplicationController
       program_list = calculate_base_rate_of_selected_programs(program_list)
     end
     
-    @result= []
+    @result = []
     if program_list.present?
       @result = find_adjustments_by_searched_programs(program_list, @lock_period, @arm_basic, @arm_advanced, @arm_caps, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
     end
@@ -530,9 +532,9 @@ class SearchApi::DashboardController < ApplicationController
     end
     results = value_result.sort_by { |h| h[:air] } || []
 
-    benchmark_costs = calculate_savings_benchmark(results)
+    benchmark_costs = calculate_savings_benchmark( results )
     results.each do |result|
-      result[:saving] = calculate_each_savings(benchmark_costs, result)    
+      result[:saving] = calculate_each_savings( benchmark_costs, result )    
     end
     return results || []
   end
