@@ -268,8 +268,8 @@ class SearchApi::DashboardController < ApplicationController
 
         if(base_rate_keys.include?(interest_rate))
           rate_index = base_rate_keys.index(interest_rate)
-          if( ( source == 0 && program.base_rate[key_list[ 0 ]].keys.include?( @lock_period ) ) ||
-              ( source == 1 && program.base_rate[key_list[rate_index]].keys.include?( @lock_period ) )
+          if( ( @source == 0 && program.base_rate[key_list[ 0 ]].keys.include?( @lock_period ) ) ||
+              ( @source == 1 && program.base_rate[key_list[rate_index]].keys.include?( @lock_period ) )
             )
             program_list << program
           end
@@ -282,7 +282,6 @@ class SearchApi::DashboardController < ApplicationController
   def search_programs
     program_list = @programs_all.where.not(@filter_not_nil)
     program_list = program_list.where(@filter_data.except(:term))
-
     if (program_list.present? && (@filter_data.keys & [:loan_size]).any?)
       program_list = program_list.select{ |m| m if m.loan_size.split("&").map{ |l| l.strip }.include?(@filter_data[:loan_size]) }
     end
@@ -326,7 +325,7 @@ class SearchApi::DashboardController < ApplicationController
     data_hash['DTI'] = value_dti
 
     hash_obj = {
-                 :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0
+                 :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0, :monthly_payment => 0.0 
                }
 
     all_adj_ids = []
@@ -335,8 +334,8 @@ class SearchApi::DashboardController < ApplicationController
     all_adj_ids.uniq!
     all_adjustments = Adjustment.find(all_adj_ids)
 
-    programs.each do |pro|
-      hash_obj.except(:air, :base_rate, :adj_points, :adj_primary_key, :final_rate, :cell_number, :closing_cost, :apr, :adjustment_pair).keys.map{ |key| hash_obj[key.to_sym] = pro.send(key) }
+    programs.each_with_index do |pro, index|
+      hash_obj.except(:air, :base_rate, :adj_points, :adj_primary_key, :final_rate, :cell_number, :closing_cost, :apr, :adjustment_pair, :monthly_payment).keys.map{ |key| hash_obj[key.to_sym] = pro.send(key) }
 
       if pro.base_rate.present?
         base_rate_keys = pro.base_rate.keys.map{ |k| ActionController::Base.helpers.number_with_precision(k, :precision => 3)}
@@ -527,7 +526,7 @@ class SearchApi::DashboardController < ApplicationController
       # value_result << hash_obj
 
       hash_obj = {
-                   :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0
+                   :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0, :monthly_payment => 0.0
                  }
     end
     results = value_result.sort_by { |h| h[:air] } || []
