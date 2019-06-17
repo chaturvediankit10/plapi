@@ -503,9 +503,10 @@ class SearchApi::DashboardController < ApplicationController
         air_and_point_value = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], @point)
 
         if air_and_point_value.present?
-          hash_obj[:air] = air_and_point_value['air'].try(:to_f)
+          air = air_and_point_value['air'].try(:to_f)
+          hash_obj[:air] = air
           hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
-          hash_obj[:apr] = calculate_apr_value(@point, hash_obj[:monthly_payment], loan_amount, @term.to_i)
+          hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, @point )
         end
       end
 
@@ -828,14 +829,14 @@ class SearchApi::DashboardController < ApplicationController
   #   ( 1 + air_value / 30 ) ** 365 - 1 rescue nil
   # end
 
-  def calculate_apr_value(points, monthly_payment, loan_amount, term)
+  def calculate_apr_value( air, term, loan_amount, points )
     # num_months    = term * 12.0
     # fees          = points / 100.0 * loan_amount
     # interest_paid = monthly_payment * num_months - loan_amount
     # number_days   = num_months * 30.0
     # return (((fees + interest_paid) / loan_amount) / number_days ) * 365.0 * 100.0
 
-    loan = FinanceMath::Loan.new(nominal_rate: :air, duration: term * 12, amount: loan_amount, structure_fee: points, currency_protection: 0, fee: 0)
+    loan = FinanceMath::Loan.new(nominal_rate: air, duration: term * 12, amount: loan_amount, structure_fee: points, currency_protection: 0, fee: 0)
     return loan.apr
   end
 
