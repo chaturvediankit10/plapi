@@ -524,8 +524,8 @@ class SearchApi::DashboardController < ApplicationController
     end
     results = value_result.sort_by { |h| h[:air] } || []
 
+    benchmark_costs = calculate_savings_benchmark(results, result[:closing_cost], @term.to_i)
     results.each do |result|
-      benchmark_costs = calculate_savings_benchmark(results, result[:closing_cost], @term.to_i)
       result[:saving] = calculate_each_savings(benchmark_costs, result, @term.to_i, result[:closing_cost])    
     end
     return results || []
@@ -547,7 +547,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def calculate_each_savings(benchmark_costs, result)
-    current_costs = result[:monthly_payment]  @term.to_i  12 + result[:closing_cost]
+    current_costs = result[:monthly_payment] * @term.to_i * 12 + result[:closing_cost]
     return benchmark_costs - current_costs
   end
 
