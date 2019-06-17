@@ -12,7 +12,7 @@ class SearchApi::DashboardController < ApplicationController
       if params["commit"].present?
         set_variable
       end
-      search_programs_with_selected_loan_type
+      search_programs
     }
     puts "Query Time  #{@time.real}"
   end
@@ -274,7 +274,7 @@ class SearchApi::DashboardController < ApplicationController
     return program_list
   end
  
-  def search_programs_with_selected_loan_type
+  def search_programs
     program_list = @programs_all.where.not(@filter_not_nil)
     program_list = program_list.where(@filter_data.except(:term))
 
