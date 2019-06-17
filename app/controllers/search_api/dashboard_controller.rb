@@ -111,8 +111,8 @@ class SearchApi::DashboardController < ApplicationController
      if params[:term] == "All"
         @programs_all = Program.where(loan_purpose: params[:loan_purpose], loan_type: params[:loan_type])
      else
-        @tab_term = params[:term].present? ? params[:term].to_i : 30
-        @programs_all = Program.where(loan_purpose: "Purchase", loan_type: "Fixed", term: @tab_term)
+        @term = params[:term].present? ? params[:term].to_i : @term
+        @programs_all = Program.where(loan_purpose: "Purchase", loan_type: "Fixed", term: @term)
      end
    end
   end
