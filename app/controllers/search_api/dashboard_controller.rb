@@ -121,7 +121,7 @@ class SearchApi::DashboardController < ApplicationController
     arm.split("/").first
   end
 
-  def modified_ltv_cltv_credit_score
+  def modify_ltv_cltv_credit_score
     %w[ltv cltv credit_score].each do |key|
       array_data = []
       if key == "ltv" || key == "cltv"
@@ -150,7 +150,7 @@ class SearchApi::DashboardController < ApplicationController
     end
   end
 
-  def modified_condition
+  def modify_condition
     %w[fannie_mae_product freddie_mac_product bank_name program_name pro_category loan_category loan_purpose loan_type term loan_size].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
@@ -180,7 +180,7 @@ class SearchApi::DashboardController < ApplicationController
     end
   end
 
-  def modified_true_condition
+  def modify_true_condition
     %w[fannie_mae freddie_mac fannie_mae_du freddie_mac_lp fha va usda streamline full_doc].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
@@ -189,7 +189,7 @@ class SearchApi::DashboardController < ApplicationController
     end
   end
 
-  def modified_variables
+  def modify_variables
     %w[state property_type financing_type refinance_option refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price].each do |key|
       if ((key == "home_price") || (key == "down_payment"))
         key_value = params[key.to_sym].present? ? params[key.to_sym].tr(',', '') : nil
@@ -222,10 +222,10 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def set_variable
-    modified_ltv_cltv_credit_score
-    modified_condition
-    modified_true_condition
-    modified_variables
+    modify_ltv_cltv_credit_score
+    modify_condition
+    modify_true_condition
+    modify_variables
   end
 
   def find_programs_on_term_based(programs, find_term)
