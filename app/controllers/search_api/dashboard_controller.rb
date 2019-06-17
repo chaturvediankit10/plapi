@@ -829,12 +829,14 @@ class SearchApi::DashboardController < ApplicationController
   # end
 
   def calculate_apr_value(points, monthly_payment, loan_amount, term)
-    num_months    = term * 12.0
-    fees          = points / 100.0 * loan_amount
-    interest_paid = monthly_payment * num_months - loan_amount
-    number_days   = num_months * 30.0
+    # num_months    = term * 12.0
+    # fees          = points / 100.0 * loan_amount
+    # interest_paid = monthly_payment * num_months - loan_amount
+    # number_days   = num_months * 30.0
+    # return (((fees + interest_paid) / loan_amount) / number_days ) * 365.0 * 100.0
 
-    return (((fees + interest_paid) / loan_amount) / number_days ) * 365.0 * 100.0
+    loan = FinanceMath::Loan.new(nominal_rate: :air, duration: term * 12, amount: loan_amount, structure_fee: points, currency_protection: 0, fee: 0)
+    return loan.apr
   end
 
 end
