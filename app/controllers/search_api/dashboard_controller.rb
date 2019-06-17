@@ -6,9 +6,10 @@ class SearchApi::DashboardController < ApplicationController
     list_of_banks_and_programs_with_search_results
   end
 
-  def list_of_banks_and_programs_with_search_results
+  def list_of_banks_and_programs_with_search_results( source = 0 ) # 0: Main page. 1: Internal Search
     @time = Benchmark.measure {
       @all_banks_name = @banks.pluck(:name)
+      @source = source
       if params["commit"].present?
         set_variable
       end
@@ -96,6 +97,8 @@ class SearchApi::DashboardController < ApplicationController
     @term_list = @programs_all.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
     @arm_advanced_list = @programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
     @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
+
+    @source = 0;
   end
 
   def load_programs_all
@@ -281,9 +284,11 @@ class SearchApi::DashboardController < ApplicationController
     if (program_list.present? && (@filter_data.keys & [:loan_size]).any?)
       program_list = program_list.select{ |m| m if m.loan_size.split("&").map{ |l| l.strip }.include?(@filter_data[:loan_size]) }
     end
+
     if program_list.present?
       program_list = calculate_base_rate_of_selected_programs(program_list)
     end
+    
     @result= []
     if program_list.present?
       @result = find_adjustments_by_searched_programs(program_list, @lock_period, @arm_basic, @arm_advanced, @arm_caps, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
