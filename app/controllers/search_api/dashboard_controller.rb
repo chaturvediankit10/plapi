@@ -842,8 +842,13 @@ class SearchApi::DashboardController < ApplicationController
     # number_days   = num_months * 30.0
     # return (((fees + interest_paid) / loan_amount) / number_days ) * 365.0 * 100.0
 
-    loan = FinanceMath::Loan.new(nominal_rate: air, duration: term * 12, amount: loan_amount, structure_fee: points, currency_protection: 0, fee: 0)
-    return loan.apr
+    if ( points == 0 )
+      return air
+    elsif points > 0
+      loan = FinanceMath::Loan.new(nominal_rate: air, duration: term * 12, amount: loan_amount, structure_fee: points, currency_protection: 0, fee: 0)
+      return loan.apr
+    else
+      return nil
   end
 
 end
