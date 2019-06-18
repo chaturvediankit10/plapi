@@ -529,8 +529,8 @@ class SearchApi::DashboardController < ApplicationController
                    :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0, :monthly_payment => 0.0
                  }
     end
-    results = value_result.sort_by { |h| h[:air] } || []
-
+    # results = value_result.sort_by { |h| h[:air] } || []
+    results = value_result.sort_by { |h| [ h[:air], h[:closing_cost]] } || []
     benchmark_costs = calculate_savings_benchmark( results ) if results.present?
     results.each do |result|
       result[:saving] = calculate_each_savings( benchmark_costs, result )    
