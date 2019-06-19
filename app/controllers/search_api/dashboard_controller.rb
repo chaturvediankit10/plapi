@@ -6,10 +6,10 @@ class SearchApi::DashboardController < ApplicationController
     list_of_banks_and_programs_with_search_results
   end
 
-  def list_of_banks_and_programs_with_search_results( source = 0 ) # 0: Main page. 1: Internal Search
+  def list_of_banks_and_programs_with_search_results #( source = 0 )
     @time = Benchmark.measure {
       @all_banks_name = @banks.pluck(:name)
-      @source = source
+      #@source = source
       if params["commit"].present?
         set_variable
       end
@@ -50,6 +50,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def set_default
+    @source = param[ :source ] # 0: Main page. 1: Internal Search 
     @banks = Bank.all
     @base_rate = 0.0
     @filter_data = {}
@@ -98,7 +99,7 @@ class SearchApi::DashboardController < ApplicationController
     @arm_advanced_list = @programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
     @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
 
-    @source = 0;
+    #@source = 0;
   end
 
   def load_programs_all
