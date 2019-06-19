@@ -50,7 +50,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def set_default
-    @source = param[ :source ] # 0: Main page. 1: Internal Search 
+    @source = params[ :source ] # 0: Main page. 1: Internal Search 
     @banks = Bank.all
     @base_rate = 0.0
     @filter_data = {}
