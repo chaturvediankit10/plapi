@@ -765,7 +765,7 @@ class SearchApi::DashboardController < ApplicationController
         fico_key2 = fico_key
       end
       if fico_key.include?("-")
-        fico_key_range =[]
+        #fico_key_range =[]
         if fico_key.include?("Inf") || fico_key.include?("Infinity")
           first_range = fico_key.split("-").first.strip.to_i
           if params[:credit_score] && params[:credit_score].include?("+")
@@ -849,6 +849,7 @@ class SearchApi::DashboardController < ApplicationController
       return loan.apr
     else
       return nil
+    end
   end
 
 end
