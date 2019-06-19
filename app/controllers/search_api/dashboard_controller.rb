@@ -50,7 +50,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def set_default
-    @source = params[ :source ] # 0: Main page. 1: Internal Search 
+    @source = params[:source].present? ? params[:source].to_i : 0  # 0: Main page. 1: 
     @banks = Bank.all
     @base_rate = 0.0
     @filter_data = {}
@@ -269,7 +269,7 @@ class SearchApi::DashboardController < ApplicationController
 
         if(base_rate_keys.include?(interest_rate))
           rate_index = base_rate_keys.index(interest_rate)
-          if( ( @source == 0 && program.base_rate[key_list[ 0 ]].keys.include?( @lock_period ) ) ||
+          if( ( @source == 0 && program.base_rate[key_list[0]].keys.include?( @lock_period ) ) ||
               ( @source == 1 && program.base_rate[key_list[rate_index]].keys.include?( @lock_period ) )
             )
             program_list << program
