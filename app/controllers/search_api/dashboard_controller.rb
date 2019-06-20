@@ -523,7 +523,11 @@ class SearchApi::DashboardController < ApplicationController
         hash_obj[:closing_cost] = ((air_and_point_value['air_point'].try(:to_f)/100)*loan_amount) rescue nil
       end
 
-      value_result << hash_obj unless (hash_obj[:air] == 0.0)
+      if @source==1
+        value_result << hash_obj
+      else
+        value_result << hash_obj unless (hash_obj[:air] == 0.0)
+      end
       # value_result << hash_obj
 
       hash_obj = {
