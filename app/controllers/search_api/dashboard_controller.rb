@@ -513,7 +513,7 @@ class SearchApi::DashboardController < ApplicationController
           air = air_and_point_value['air'].try(:to_f)
           hash_obj[:air] = air
           hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
-          hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, @point )
+          hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
         end
       end
 
