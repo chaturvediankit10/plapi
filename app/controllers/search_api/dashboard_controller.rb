@@ -194,13 +194,16 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def modify_variables
-    %w[state property_type financing_type refinance_option refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price].each do |key|
-      if ((key == "home_price") || (key == "down_payment"))
-        key_value = params[key.to_sym].present? ? params[key.to_sym].tr(',', '') : nil
-      else
-        key_value = params[key.to_sym]
+    %w[state property_type financing_type refinance_option refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price down_payment].each do |key|
+      key_value = params[key.to_sym]
+      if key_value.present?
+        if ((key == "home_price") || (key == "down_payment"))
+          key_value = key_value.present? ? key_value.tr(',', '') : nil
+        else
+          key_value = key_value
+        end
+        instance_variable_set("@#{key}", key_value) if key_value.present?
       end
-      instance_variable_set("@#{key}", key_value) if key_value.present?
     end
   end
 
