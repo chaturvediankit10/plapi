@@ -97,28 +97,30 @@ class SearchApi::DashboardController < ApplicationController
     add_default_loan_cat
     @term_list = @programs_all.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
     @arm_advanced_list = @programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
-    @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
-
-    #@source = 0;
+    @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}    
   end
 
-  def load_programs_all
-   if params[:loan_type] == "ARM"
-      set_arm_options
-     if params[:arm_basic].present? && params[:arm_basic] != "All"
-       arm_basic = split_arm_basic(params[:arm_basic])
-       @programs_all = Program.where(loan_purpose: params[:loan_purpose], loan_type: params[:loan_type], arm_basic: arm_basic)
-     else
-       @programs_all = Program.where(loan_purpose: params[:loan_purpose], loan_type: params[:loan_type])
-     end
-   else
-     if params[:term] == "All"
-        @programs_all = Program.where(loan_purpose: params[:loan_purpose], loan_type: params[:loan_type])
-     else
-        @term = params[:term].present? ? params[:term].to_i : @term
-        @programs_all = Program.where(loan_purpose: "Purchase", loan_type: "Fixed", term: @term)
-     end
-   end
+  def load_programs_all  
+    loan_purpose = params[:loan_purpose].present? ? params[:loan_purpose] : @loan_purpose
+    loan_type = params[:loan_type].present? ? params[:loan_type] : @loan_type
+    arm_basic = params[:arm_basic].present? ? params[:arm_basic] : @arm_basic
+    term = params[:term].present? ? params[:term] : @term
+
+    if loan_type == "ARM"
+      if arm_basic != "All"
+        arm_basic = split_arm_basic(arm_basic)
+        @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type, arm_basic: arm_basic)
+      else
+        @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type)
+      end
+    else
+      if term == "All"
+          @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type)
+      else
+          @term = term.present? ? term.to_i : @term
+          @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type, term: @term)
+      end
+    end
   end
 
   def split_arm_basic(arm)
@@ -233,6 +235,9 @@ class SearchApi::DashboardController < ApplicationController
     modify_condition
     modify_true_condition
     modify_variables
+    if params[ :loan_type ] == "ARM"
+      set_arm_options
+    end
   end
 
   def find_programs_on_term_based(programs, find_term)
