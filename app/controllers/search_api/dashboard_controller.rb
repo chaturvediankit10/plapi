@@ -6,10 +6,9 @@ class SearchApi::DashboardController < ApplicationController
     list_of_banks_and_programs_with_search_results
   end
 
-  def list_of_banks_and_programs_with_search_results #( source = 0 )
+  def list_of_banks_and_programs_with_search_results
     @time = Benchmark.measure {
       @all_banks_name = @banks.pluck(:name)
-      #@source = source
       if params["commit"].present?
         set_variable
       end
@@ -19,7 +18,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def fetch_programs_by_bank(html_type=false)
-    @programs_all = load_programs_all
+    @programs_all = load_programs_all( 0 )
     if params[:bank_name].present?
       @programs_all = @programs_all.where(bank_name: params[:bank_name]) unless params[:bank_name].eql?('All')
     end
@@ -100,7 +99,13 @@ class SearchApi::DashboardController < ApplicationController
     @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}    
   end
 
-  def load_programs_all  
+  def load_programs_all( filtered = 1 )
+
+    if filtered < 1
+      @program_all = Program.all
+      return;
+    end
+
     loan_purpose = params[:loan_purpose].present? ? params[:loan_purpose] : @loan_purpose
     loan_type = params[:loan_type].present? ? params[:loan_type] : @loan_type
     arm_basic = params[:arm_basic].present? ? params[:arm_basic] : @arm_basic
