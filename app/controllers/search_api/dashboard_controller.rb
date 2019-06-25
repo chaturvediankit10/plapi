@@ -529,8 +529,11 @@ class SearchApi::DashboardController < ApplicationController
           air = air_and_point_value['air'].try(:to_f)
           hash_obj[:air] = air
           hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
+          hash_obj[:starting_base_point] = air_and_point_value['starting_base_point']
+          hash_obj[:air_point] = air_and_point_value['air_point']
 
           hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
+
           hash_obj[:monthly_breakdown] = monthly_expenses_breakdown(loan_amount, (@term.to_i*12), hash_obj[:monthly_payment], @home_price.to_i, @default_annual_home_insurance, @default_pmi_insurance)
         end
       end
@@ -832,12 +835,13 @@ class SearchApi::DashboardController < ApplicationController
     air_key = {}
     base_rate_keys = pro.base_rate.keys
     total_adj = adj_points.present? ? adj_points.sum : 0
-    yellow_keys = pro.base_rate.values.map{|a| a[@lock_period]}
-    orange_keys = yellow_keys.map{|a| (a.to_f + total_adj.to_f).round(3)}
+    yellow_keys = pro.base_rate.values.map{|a| a[@lock_period]}.compact
+    orange_keys = yellow_keys.map{|a| (a.to_f + total_adj.to_f).round(3)}.compact
     air_value = orange_keys.map{|a| a.to_f if a.to_i == point && a.positive?}.compact.min
     if air_value.present?
-      air_key['air_point'] = air_value
-      air_key['air'] = base_rate_keys[orange_keys.index(air_value)]
+      air_key['air_point'] = air_value.to_f.round(3)
+      air_key['air'] = (base_rate_keys[orange_keys.index(air_value)]).to_f.round(3)
+      air_key['starting_base_point'] = yellow_keys[orange_keys.index(air_value)].to_f.round(3)
     end
     return air_key
   end
