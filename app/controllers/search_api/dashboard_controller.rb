@@ -529,19 +529,9 @@ class SearchApi::DashboardController < ApplicationController
           air = air_and_point_value['air'].try(:to_f)
           hash_obj[:air] = air
           hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
-<<<<<<< HEAD
-<<<<<<< e07b0ada9c3afca83080e33cbd8bfe5150b0989c
-          hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
-=======
 
           hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
           hash_obj[:monthly_breakdown] = monthly_expenses_breakdown(loan_amount, (@term.to_i*12), hash_obj[:monthly_payment], @home_price.to_i, @default_annual_home_insurance, @default_pmi_insurance)
->>>>>>> changes for pie chart
-=======
-
-          hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
-          hash_obj[:monthly_breakdown] = monthly_expenses_breakdown(loan_amount, (@term.to_i*12), hash_obj[:monthly_payment], @home_price.to_i, @default_annual_home_insurance, @default_pmi_insurance)
->>>>>>> 98af8ee0b58ff5b51f173a18dc5bf3db34576f62
         end
       end
 
