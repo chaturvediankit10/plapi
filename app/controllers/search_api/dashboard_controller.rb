@@ -98,11 +98,12 @@ class SearchApi::DashboardController < ApplicationController
     @term_list = @programs_all.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
     @arm_advanced_list = @programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
     @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
-
-    #@source = 0;
+    @default_property_tax_perc = 0.86
+    @default_annual_home_insurance = 974
+    @default_pmi_insurance = 100.00
   end
 
-  def load_programs_all
+  def load_programs_all( filtered = 1 )
    if params[:loan_type] == "ARM"
       set_arm_options
      if params[:arm_basic].present? && params[:arm_basic] != "All"
@@ -326,7 +327,7 @@ class SearchApi::DashboardController < ApplicationController
     data_hash['DTI'] = value_dti
 
     hash_obj = {
-                 :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0, :monthly_payment => 0.0 
+                 :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0, :monthly_payment => 0.0
                }
 
     all_adj_ids = []
@@ -513,7 +514,9 @@ class SearchApi::DashboardController < ApplicationController
           air = air_and_point_value['air'].try(:to_f)
           hash_obj[:air] = air
           hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
-          hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, @point )
+
+          hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
+          hash_obj[:monthly_breakdown] = monthly_expenses_breakdown(loan_amount, (@term.to_i*12), hash_obj[:monthly_payment], @home_price.to_i, @default_annual_home_insurance, @default_pmi_insurance)
         end
       end
 
@@ -855,6 +858,54 @@ class SearchApi::DashboardController < ApplicationController
     else
       return nil
     end
+  end
+
+  def monthly_expenses_breakdown(calculate_loan_payment, number_of_payments, calculate_monthly_payment, home_price, default_annual_home_insurance, default_pmi_insurance)
+    monthly_breakdown = {
+      :mortgage_principal => {},
+      :mortgage_interest => {},
+      :home_insurance => {},
+      :pmi_insurance => {},
+      :hoa_dues => {},
+      :monthly_expenses_sum => {},
+      :property_tax => {}
+    }
+
+    property_tax = {}
+    property_tax[:monthly] = (home_price * @default_property_tax_perc*1.0 /100/12) rescue 0.0
+    property_tax[:total] = (property_tax[:monthly]*number_of_payments) rescue 0.0
+    monthly_breakdown[:property_tax][:monthly] = property_tax[:monthly]
+    monthly_breakdown[:mortgage_principal][:monthly] = (calculate_loan_payment/number_of_payments) rescue 0.0
+    monthly_breakdown[:mortgage_principal][:total] = calculate_loan_payment
+
+    monthly_breakdown[:mortgage_interest][:monthly] = (calculate_monthly_payment-monthly_breakdown[:mortgage_principal][:monthly]) rescue 0.0
+    monthly_breakdown[:mortgage_interest][:total] =  (calculate_monthly_payment*number_of_payments-monthly_breakdown[:mortgage_principal][:total]) rescue 0.0
+    monthly_breakdown[:home_insurance][:monthly] = (home_price*0.35).round(2) rescue 0.0
+
+    monthly_breakdown[:home_insurance][:total] = ((default_annual_home_insurance*1.0*number_of_payments)/12) rescue 0.0
+    monthly_breakdown[:pmi_insurance][:monthly] = default_pmi_insurance rescue 0.0
+    monthly_breakdown[:pmi_insurance][:total] =  monthly_breakdown[:pmi_insurance][:monthly].to_i == 0 ? 0.0 :  monthly_breakdown[:pmi_insurance][:monthly]*calculate_pmi_term rescue 0.0
+    monthly_breakdown[:hoa_dues][:monthly] = 0.00
+    monthly_breakdown[:hoa_dues][:total] = (monthly_breakdown[:hoa_dues][:monthly]*number_of_payments) rescue 0.0
+    monthly_breakdown[:monthly_expenses_sum][:monthly] =  ((monthly_breakdown[:mortgage_principal][:monthly] + monthly_breakdown[:mortgage_interest][:monthly] + property_tax[:monthly] + monthly_breakdown[:home_insurance][:monthly] + monthly_breakdown[:pmi_insurance][:monthly] + monthly_breakdown[:hoa_dues][:monthly]))  rescue 0.0
+
+    monthly_breakdown[:monthly_expenses_sum][:total] = ((monthly_breakdown[:mortgage_principal][:total] + monthly_breakdown[:mortgage_interest][:total] + property_tax[:total] + monthly_breakdown[:home_insurance][:total] + monthly_breakdown[:pmi_insurance][:total])) rescue 0.0
+
+    monthly_breakdown[:mortgage_principal][:percentage] = ((monthly_breakdown[:mortgage_principal][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).infinite? ? 0.0 : ((monthly_breakdown[:mortgage_principal][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2) rescue 0.0
+
+    monthly_breakdown[:mortgage_interest][:percentage] =  ((monthly_breakdown[:mortgage_interest][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).infinite? ? 0.0 : ((monthly_breakdown[:mortgage_interest][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2) rescue 0.0
+
+    property_tax[:percentage] = ((property_tax[:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2) rescue 0.0
+
+    monthly_breakdown[:home_insurance][:percentage] = ((monthly_breakdown[:home_insurance][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2) rescue 0.0
+
+    monthly_breakdown[:pmi_insurance][:percentage] =  ((monthly_breakdown[:pmi_insurance][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2) rescue 0.0
+
+    monthly_breakdown[:hoa_dues][:percentage] =  ((monthly_breakdown[:hoa_dues][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2) rescue 0.0
+
+    monthly_breakdown[:monthly_expenses_sum][:percentage] = (monthly_breakdown[:mortgage_principal][:percentage] + monthly_breakdown[:mortgage_interest][:percentage] + property_tax[:percentage] + monthly_breakdown[:home_insurance][:percentage] + monthly_breakdown[:pmi_insurance][:percentage] + monthly_breakdown[:hoa_dues][:percentage]).round() rescue 100
+
+    return monthly_breakdown
   end
 
 end
