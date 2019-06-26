@@ -40,18 +40,4 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake", "~> 10.0"
 
   spec.add_dependency 'jquery-datatables'
-  spec.add_dependency 'bootsnap', '>= 1.1.0'
-	spec.add_dependency 'bootstrap'
-	spec.add_dependency 'tzinfo-data'
-	spec.add_dependency "select2-rails"
-
-  spec.add_dependency 'jquery-rails'
-  spec.add_dependency "roo", "~> 2.7.0"
-  spec.add_dependency 'roo-xls'
-  spec.add_dependency 'sidekiq'
-  spec.add_dependency 'google_drive'
-  spec.add_dependency 'redis-rails'
-  spec.add_dependency 'csv'
-  spec.add_dependency 'jquery-validation-rails'
-
 end
