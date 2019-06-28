@@ -235,11 +235,26 @@ class SearchApi::DashboardController < ApplicationController
     end
   end
 
+  def set_loan_amount(loan_amt)
+    Program::LOAN_AMOUNT.each do |a|
+      loan_value = a[1]
+      if loan_value.present? && loan_value.include?("-")
+        lower = loan_value.split("-").first.squish.to_i
+        higher = loan_value.split("-").last.squish.to_i
+        if loan_amt.between?(lower, higher)
+          @loan_amount = loan_value
+        end
+      end
+    end
+  end
+
   def set_variable
     modify_ltv_cltv_credit_score
     modify_condition
     modify_true_condition
     modify_variables
+    loan_amt = (@home_price.to_i - @down_payment.to_i)
+    set_loan_amount(loan_amt) if @source == 0
     if params[ :loan_type ] == "ARM"
       set_arm_options
     end
