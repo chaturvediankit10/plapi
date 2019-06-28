@@ -248,6 +248,19 @@ class SearchApi::DashboardController < ApplicationController
     end
   end
 
+  def set_ltv_value(ltv)
+    Program::LTV_VALUES.each do |ltv_value|
+      ltv_value = ltv_value[0]
+      unless ltv_value.include?("+")
+        lower = ltv_value.split("-").first.squish.to_i
+        higher = ltv_value.split("-").last.squish.to_i
+        if ltv.between?(lower, higher)
+          @ltv = (lower*100..higher*100).to_a.map{|e| e.to_f/100}
+        end
+      end
+    end
+  end
+
   def set_variable
     modify_ltv_cltv_credit_score
     modify_condition
@@ -255,6 +268,7 @@ class SearchApi::DashboardController < ApplicationController
     modify_variables
     loan_amt = (@home_price.to_i - @down_payment.to_i)
     set_loan_amount(loan_amt) if @source == 0
+    set_ltv_value(loan_amt/@home_price.to_f*100) if @source == 0
     if params[ :loan_type ] == "ARM"
       set_arm_options
     end
