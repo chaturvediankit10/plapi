@@ -445,7 +445,6 @@ class SearchApi::DashboardController < ApplicationController
                                   when 6
                                     adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
                                   end
-
                   if %w(LoanAmount LTV FICO LoanSize CLTV Term DTI).include?(key_name)
                     begin
                       if required_data.present?
@@ -502,26 +501,24 @@ class SearchApi::DashboardController < ApplicationController
               end
             end
 
-            adj_key_hash.keys.each do |hash_key, index|
               begin
-                point = case hash_key
-                        when 0
-                          adj.data[first_key][adj_key_hash[hash_key]]
-                        when 1
-                          adj.data[first_key][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                        when 2
-                          adj.data[first_key][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                        when 3
-                          adj.data[first_key][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                        when 4
-                          adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
-                        when 5
-                          adj.data[first_key][adj_key_hash[hash_key-5]][adj_key_hash[hash_key-4]][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                        when 6
-                          adj.data[first_key][adj_key_hash[hash_key-6]][adj_key_hash[hash_key-5]][adj_key_hash[hash_key-4]][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                        end
+                point = case (adj_key_hash.keys.count-1)
+                  when 0
+                    adj.data[first_key][adj_key_hash[0]]
+                  when 1
+                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]]
+                  when 2
+                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]]
+                  when 3
+                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]]
+                  when 4
+                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]]
+                  when 5
+                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]][adj_key_hash[5]]
+                  when 6
+                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]][adj_key_hash[5]][adj_key_hash[6]]
+                  end
 
-                if adj_key_hash.keys.count-1==hash_key
                   if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
                     hash_obj[:adj_points] << point.to_f
                     hash_obj[:final_rate] << point.to_f
@@ -531,8 +528,6 @@ class SearchApi::DashboardController < ApplicationController
                   end
                 end
               rescue Exception
-              end
-            end
 
           end
         else
