@@ -72,7 +72,7 @@ class SearchApi::DashboardController < ApplicationController
     @property_type = "1 Unit"
     @financing_type = "Subordinate Financing"
     @premium_type ="1 Unit"
-    @refinance_option ="Cash Out"
+    @refinance_option = "Cash Out"
     @misc_adjuster = "CA Escrow Waiver (Full or Taxes Only)"
     @state = "All"
     @result = []
@@ -204,7 +204,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def modify_variables
-    %w[state property_type financing_type refinance_option refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price down_payment].each do |key|
+    %w[state property_type financing_type refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price down_payment].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
         if ((key == "home_price") || (key == "down_payment"))
@@ -344,7 +344,6 @@ class SearchApi::DashboardController < ApplicationController
 
   # concer code for input api
   def find_adjustments_by_searched_programs(programs, value_lock_period, value_arm_basic, value_arm_advanced, value_arm_caps, value_fannie_mae_product, value_freddie_mac_product, value_loan_purpose, value_program_category, value_property_type, value_financing_type, value_premium_type, value_refinance_option, value_misc_adjuster, value_state, value_loan_type, value_loan_size, value_result, value_interest, value_loan_amount, value_ltv, value_cltv, value_term, value_credit_score, value_dti)
-
     data_hash = {}
     data_hash['LockDay'] = value_lock_period
     data_hash['ArmBasic'] = value_arm_basic
@@ -363,7 +362,6 @@ class SearchApi::DashboardController < ApplicationController
     data_hash['LoanAmount'] = value_loan_amount
     data_hash['LTV'] = value_ltv
     data_hash['FICO'] = value_credit_score
-    data_hash['MiscAdjuster'] = value_misc_adjuster
     data_hash['LoanSize'] = value_loan_size
     data_hash['CLTV'] = value_cltv
     data_hash['State'] = value_state
