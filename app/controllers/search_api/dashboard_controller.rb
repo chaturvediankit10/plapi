@@ -72,7 +72,7 @@ class SearchApi::DashboardController < ApplicationController
     @property_type = "1 Unit"
     @financing_type = "Subordinate Financing"
     @premium_type ="1 Unit"
-    @refinance_option = "Cash Out"
+    @refinance_option ="Cash Out"
     @misc_adjuster = "CA Escrow Waiver (Full or Taxes Only)"
     @state = "All"
     @result = []
@@ -103,32 +103,22 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def load_programs_all( filtered = 1 )
-
-    if filtered < 1
-      @program_all = Program.all
-      return;
-    end
-
-    loan_purpose = params[:loan_purpose].present? ? params[:loan_purpose] : @loan_purpose
-    loan_type = params[:loan_type].present? ? params[:loan_type] : @loan_type
-    arm_basic = params[:arm_basic].present? ? params[:arm_basic] : @arm_basic
-    term = params[:term].present? ? params[:term] : @term
-
-    if loan_type == "ARM"
-      if arm_basic != "All"
-        arm_basic = split_arm_basic(arm_basic)
-        @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type, arm_basic: arm_basic)
-      else
-        @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type)
-      end
-    else
-      if term == "All"
-          @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type)
-      else
-          @term = term.present? ? term.to_i : @term
-          @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type, term: @term)
-      end
-    end   
+   if params[:loan_type] == "ARM"
+      set_arm_options
+     if params[:arm_basic].present? && params[:arm_basic] != "All"
+       arm_basic = split_arm_basic(params[:arm_basic])
+       @programs_all = Program.where(loan_purpose: params[:loan_purpose], loan_type: params[:loan_type], arm_basic: arm_basic)
+     else
+       @programs_all = Program.where(loan_purpose: params[:loan_purpose], loan_type: params[:loan_type])
+     end
+   else
+     if params[:term] == "All"
+        @programs_all = Program.where(loan_purpose: params[:loan_purpose], loan_type: params[:loan_type])
+     else
+        @term = params[:term].present? ? params[:term].to_i : @term
+        @programs_all = Program.where(loan_purpose: "Purchase", loan_type: "Fixed", term: @term)
+     end
+   end
   end
 
   def split_arm_basic(arm)
@@ -204,7 +194,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def modify_variables
-    %w[state property_type financing_type refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price down_payment].each do |key|
+    %w[state property_type financing_type refinance_option refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price down_payment].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
         if ((key == "home_price") || (key == "down_payment"))
@@ -344,6 +334,7 @@ class SearchApi::DashboardController < ApplicationController
 
   # concer code for input api
   def find_adjustments_by_searched_programs(programs, value_lock_period, value_arm_basic, value_arm_advanced, value_arm_caps, value_fannie_mae_product, value_freddie_mac_product, value_loan_purpose, value_program_category, value_property_type, value_financing_type, value_premium_type, value_refinance_option, value_misc_adjuster, value_state, value_loan_type, value_loan_size, value_result, value_interest, value_loan_amount, value_ltv, value_cltv, value_term, value_credit_score, value_dti)
+
     data_hash = {}
     data_hash['LockDay'] = value_lock_period
     data_hash['ArmBasic'] = value_arm_basic
@@ -362,6 +353,7 @@ class SearchApi::DashboardController < ApplicationController
     data_hash['LoanAmount'] = value_loan_amount
     data_hash['LTV'] = value_ltv
     data_hash['FICO'] = value_credit_score
+    data_hash['MiscAdjuster'] = value_misc_adjuster
     data_hash['LoanSize'] = value_loan_size
     data_hash['CLTV'] = value_cltv
     data_hash['State'] = value_state
@@ -446,6 +438,7 @@ class SearchApi::DashboardController < ApplicationController
                                   when 6
                                     adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
                                   end
+
                   if %w(LoanAmount LTV FICO LoanSize CLTV Term DTI).include?(key_name)
                     begin
                       if required_data.present?
@@ -502,24 +495,26 @@ class SearchApi::DashboardController < ApplicationController
               end
             end
 
+            adj_key_hash.keys.each do |hash_key, index|
               begin
-                point = case (adj_key_hash.keys.count-1)
-                  when 0
-                    adj.data[first_key][adj_key_hash[0]]
-                  when 1
-                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]]
-                  when 2
-                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]]
-                  when 3
-                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]]
-                  when 4
-                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]]
-                  when 5
-                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]][adj_key_hash[5]]
-                  when 6
-                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]][adj_key_hash[5]][adj_key_hash[6]]
-                  end
+                point = case hash_key
+                        when 0
+                          adj.data[first_key][adj_key_hash[hash_key]]
+                        when 1
+                          adj.data[first_key][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
+                        when 2
+                          adj.data[first_key][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
+                        when 3
+                          adj.data[first_key][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
+                        when 4
+                          adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
+                        when 5
+                          adj.data[first_key][adj_key_hash[hash_key-5]][adj_key_hash[hash_key-4]][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
+                        when 6
+                          adj.data[first_key][adj_key_hash[hash_key-6]][adj_key_hash[hash_key-5]][adj_key_hash[hash_key-4]][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
+                        end
 
+                if adj_key_hash.keys.count-1==hash_key
                   if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
                     hash_obj[:adj_points] << point.to_f
                     hash_obj[:final_rate] << point.to_f
@@ -529,6 +524,8 @@ class SearchApi::DashboardController < ApplicationController
                   end
                 end
               rescue Exception
+              end
+            end
 
           end
         else
@@ -553,10 +550,8 @@ class SearchApi::DashboardController < ApplicationController
           hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
           hash_obj[:starting_base_point] = air_and_point_value['starting_base_point']
           hash_obj[:air_point] = air_and_point_value['air_point']
-
           hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
-
-          hash_obj[:monthly_breakdown] = SearchApi::Calculation.new.monthly_expenses_breakdown(loan_amount, (@term.to_i*12), hash_obj[:monthly_payment], @home_price.to_i, @default_annual_home_insurance, @default_pmi_insurance, @default_property_tax_perc, @down_payment, params)
+          hash_obj[:monthly_breakdown] = monthly_expenses_breakdown(loan_amount, (@term.to_i*12), hash_obj[:monthly_payment], @home_price.to_i, @default_annual_home_insurance, @default_pmi_insurance)
         end
       end
 
@@ -855,7 +850,7 @@ class SearchApi::DashboardController < ApplicationController
 
   def adjusted_interest_rate_calculate(pro, adj_points, point)
     air_key = {}
-    base_rate_keys = pro.base_rate.keys.first.present? ? pro.base_rate.keys : pro.base_rate.keys.drop(1)
+    base_rate_keys = pro.base_rate.keys
     total_adj = adj_points.present? ? adj_points.sum : 0
     yellow_keys = pro.base_rate.values.map{|a| a[@lock_period]}.compact
     orange_keys = yellow_keys.map{|a| (a.to_f + total_adj.to_f).round(3)}.compact
@@ -880,6 +875,10 @@ class SearchApi::DashboardController < ApplicationController
     return monthly_payment
   end
 
+  # def calculate_apr_value(air_value)
+  #   ( 1 + air_value / 30 ) ** 365 - 1 rescue nil
+  # end
+
   def calculate_apr_value( air, term, loan_amount, points )
     # num_months    = term * 12.0
     # fees          = points / 100.0 * loan_amount
@@ -897,54 +896,52 @@ class SearchApi::DashboardController < ApplicationController
     end
   end
 
-  
+  def monthly_expenses_breakdown(calculate_loan_payment, number_of_payments, calculate_monthly_payment, home_price, default_annual_home_insurance, default_pmi_insurance)
+    monthly_breakdown = {
+      :mortgage_principal => {},
+      :mortgage_interest => {},
+      :home_insurance => {},
+      :pmi_insurance => {},
+      :hoa_dues => {},
+      :monthly_expenses_sum => {},
+      :property_tax => {}
+    }
 
-  # def monthly_expenses_breakdown(calculate_loan_payment, number_of_payments, calculate_monthly_payment, home_price, default_annual_home_insurance, default_pmi_insurance)
-  #   monthly_breakdown = {
-  #     :mortgage_principal => {},
-  #     :mortgage_interest => {},
-  #     :home_insurance => {},
-  #     :pmi_insurance => {},
-  #     :hoa_dues => {},
-  #     :monthly_expenses_sum => {},
-  #     :property_tax => {}
-  #   }
+    property_tax = {}
+    property_tax[:monthly] = (home_price * @default_property_tax_perc*1.0 /100/12) rescue 0.0
+    property_tax[:total] = (property_tax[:monthly]*number_of_payments) rescue 0.0
+    monthly_breakdown[:property_tax][:monthly] = property_tax[:monthly]
+    monthly_breakdown[:mortgage_principal][:monthly] = (calculate_loan_payment/number_of_payments) rescue 0.0
+    monthly_breakdown[:mortgage_principal][:total] = calculate_loan_payment
 
-  #   property_tax = {}
-  #   property_tax[:monthly] = (home_price * @default_property_tax_perc*1.0 /100/12)
-  #   property_tax[:total] = (property_tax[:monthly]*number_of_payments)
-  #   monthly_breakdown[:property_tax][:monthly] = property_tax[:monthly]
-  #   monthly_breakdown[:mortgage_principal][:monthly] = (calculate_loan_payment/number_of_payments)
-  #   monthly_breakdown[:mortgage_principal][:total] = calculate_loan_payment
+    monthly_breakdown[:mortgage_interest][:monthly] = (calculate_monthly_payment-monthly_breakdown[:mortgage_principal][:monthly]) rescue 0.0
+    monthly_breakdown[:mortgage_interest][:total] =  (calculate_monthly_payment*number_of_payments-monthly_breakdown[:mortgage_principal][:total]) rescue 0.0
+    monthly_breakdown[:home_insurance][:monthly] = (home_price*0.35).round(2) rescue 0.0
 
-  #   monthly_breakdown[:mortgage_interest][:monthly] = (calculate_monthly_payment-monthly_breakdown[:mortgage_principal][:monthly])
-  #   monthly_breakdown[:mortgage_interest][:total] =  (calculate_monthly_payment*number_of_payments-monthly_breakdown[:mortgage_principal][:total])
-  #   monthly_breakdown[:home_insurance][:monthly] = (home_price*0.35).round(2)
+    monthly_breakdown[:home_insurance][:total] = ((default_annual_home_insurance*1.0*number_of_payments)/12) rescue 0.0
+    monthly_breakdown[:pmi_insurance][:monthly] = default_pmi_insurance rescue 0.0
+    monthly_breakdown[:pmi_insurance][:total] =  monthly_breakdown[:pmi_insurance][:monthly].to_i == 0 ? 0.0 :  monthly_breakdown[:pmi_insurance][:monthly]*calculate_pmi_term rescue 0.0
+    monthly_breakdown[:hoa_dues][:monthly] = 0.00
+    monthly_breakdown[:hoa_dues][:total] = (monthly_breakdown[:hoa_dues][:monthly]*number_of_payments) rescue 0.0
+    monthly_breakdown[:monthly_expenses_sum][:monthly] =  ((monthly_breakdown[:mortgage_principal][:monthly] + monthly_breakdown[:mortgage_interest][:monthly] + property_tax[:monthly] + monthly_breakdown[:home_insurance][:monthly] + monthly_breakdown[:pmi_insurance][:monthly] + monthly_breakdown[:hoa_dues][:monthly]))  rescue 0.0
 
-  #   monthly_breakdown[:home_insurance][:total] = ((default_annual_home_insurance*1.0*number_of_payments)/12)
-  #   monthly_breakdown[:pmi_insurance][:monthly] = default_pmi_insurance
-  #   monthly_breakdown[:pmi_insurance][:total] =  monthly_breakdown[:pmi_insurance][:monthly].to_i == 0 ? 0.0 :  monthly_breakdown[:pmi_insurance][:monthly]*calculate_pmi_term(home_price, number_of_payments)
-  #   monthly_breakdown[:hoa_dues][:monthly] = 0.00
-  #   monthly_breakdown[:hoa_dues][:total] = (monthly_breakdown[:hoa_dues][:monthly]*number_of_payments)
-  #   monthly_breakdown[:monthly_expenses_sum][:monthly] =  ((monthly_breakdown[:mortgage_principal][:monthly] + monthly_breakdown[:mortgage_interest][:monthly] + property_tax[:monthly] + monthly_breakdown[:home_insurance][:monthly] + monthly_breakdown[:pmi_insurance][:monthly] + monthly_breakdown[:hoa_dues][:monthly]))
+    monthly_breakdown[:monthly_expenses_sum][:total] = ((monthly_breakdown[:mortgage_principal][:total] + monthly_breakdown[:mortgage_interest][:total] + property_tax[:total] + monthly_breakdown[:home_insurance][:total] + monthly_breakdown[:pmi_insurance][:total])) rescue 0.0
 
-  #   monthly_breakdown[:monthly_expenses_sum][:total] = ((monthly_breakdown[:mortgage_principal][:total] + monthly_breakdown[:mortgage_interest][:total] + property_tax[:total] + monthly_breakdown[:home_insurance][:total] + monthly_breakdown[:pmi_insurance][:total]))
+    monthly_breakdown[:mortgage_principal][:percentage] = ((monthly_breakdown[:mortgage_principal][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).infinite? ? 0.0 : ((monthly_breakdown[:mortgage_principal][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2) rescue 0.0
 
-  #   monthly_breakdown[:mortgage_principal][:percentage] = ((monthly_breakdown[:mortgage_principal][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).infinite? ? 0.0 : ((monthly_breakdown[:mortgage_principal][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2)
+    monthly_breakdown[:mortgage_interest][:percentage] =  ((monthly_breakdown[:mortgage_interest][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).infinite? ? 0.0 : ((monthly_breakdown[:mortgage_interest][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2) rescue 0.0
 
-  #   monthly_breakdown[:mortgage_interest][:percentage] =  ((monthly_breakdown[:mortgage_interest][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).infinite? ? 0.0 : ((monthly_breakdown[:mortgage_interest][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2)
+    property_tax[:percentage] = ((property_tax[:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2) rescue 0.0
 
-  #   property_tax[:percentage] = ((property_tax[:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2)
+    monthly_breakdown[:home_insurance][:percentage] = ((monthly_breakdown[:home_insurance][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2) rescue 0.0
 
-  #   monthly_breakdown[:home_insurance][:percentage] = ((monthly_breakdown[:home_insurance][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2)
+    monthly_breakdown[:pmi_insurance][:percentage] =  ((monthly_breakdown[:pmi_insurance][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2) rescue 0.0
 
-  #   monthly_breakdown[:pmi_insurance][:percentage] =  ((monthly_breakdown[:pmi_insurance][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2)
+    monthly_breakdown[:hoa_dues][:percentage] =  ((monthly_breakdown[:hoa_dues][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2) rescue 0.0
 
-  #   monthly_breakdown[:hoa_dues][:percentage] =  ((monthly_breakdown[:hoa_dues][:monthly]*100 / monthly_breakdown[:monthly_expenses_sum][:monthly])).round(2)
+    monthly_breakdown[:monthly_expenses_sum][:percentage] = (monthly_breakdown[:mortgage_principal][:percentage] + monthly_breakdown[:mortgage_interest][:percentage] + property_tax[:percentage] + monthly_breakdown[:home_insurance][:percentage] + monthly_breakdown[:pmi_insurance][:percentage] + monthly_breakdown[:hoa_dues][:percentage]).round() rescue 100
 
-  #   monthly_breakdown[:monthly_expenses_sum][:percentage] = (monthly_breakdown[:mortgage_principal][:percentage] + monthly_breakdown[:mortgage_interest][:percentage] + property_tax[:percentage] + monthly_breakdown[:home_insurance][:percentage] + monthly_breakdown[:pmi_insurance][:percentage] + monthly_breakdown[:hoa_dues][:percentage]).round()
-
-  #   return monthly_breakdown
-  # end
+    return monthly_breakdown
+  end
 
 end
