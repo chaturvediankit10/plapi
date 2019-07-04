@@ -3,10 +3,10 @@ class SearchApi::DashboardController < ApplicationController
   before_action :set_default, except: [:fetch_programs, :fetch_programs_by_bank]
 
   def index
-    list_of_banks_and_programs_with_search_results
+    api_search
   end
 
-  def list_of_banks_and_programs_with_search_results
+  def api_search
     @time = Benchmark.measure {
       @all_banks_name = @banks.pluck(:name)
       if params["commit"].present?
