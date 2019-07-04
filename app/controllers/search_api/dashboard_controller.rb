@@ -501,36 +501,31 @@ class SearchApi::DashboardController < ApplicationController
                 end
               end
             end
+            point = case (adj_key_hash.keys.count-1)
+              when 0
+                adj.data[first_key][adj_key_hash[0]]
+              when 1
+                adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]]
+              when 2
+                adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]]
+              when 3
+                adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]]
+              when 4
+                adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]]
+              when 5
+                adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]][adj_key_hash[5]]
+              when 6
+                adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]][adj_key_hash[5]][adj_key_hash[6]]
+              end
 
-              begin
-                point = case (adj_key_hash.keys.count-1)
-                  when 0
-                    adj.data[first_key][adj_key_hash[0]]
-                  when 1
-                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]]
-                  when 2
-                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]]
-                  when 3
-                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]]
-                  when 4
-                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]]
-                  when 5
-                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]][adj_key_hash[5]]
-                  when 6
-                    adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]][adj_key_hash[5]][adj_key_hash[6]]
-                  end
-
-                  if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
-                    hash_obj[:adj_points] << point.to_f
-                    hash_obj[:final_rate] << point.to_f
-                    hash_obj[:adj_primary_key] << adj.data.keys.first
-                    hash_obj[:adjustment_pair][adj.data.keys.first] = point.to_f
-                    hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
-                  end
-                end
-              rescue Exception
-
-          end
+              if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
+                hash_obj[:adj_points] << point.to_f
+                hash_obj[:final_rate] << point.to_f
+                hash_obj[:adj_primary_key] << adj.data.keys.first
+                hash_obj[:adjustment_pair][adj.data.keys.first] = point.to_f
+                hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
+              end
+            end
         else
           hash_obj[:adj_points] = "Adjustment Not Present"
           hash_obj[:adj_primary_key] = "Adjustment Not Present"
@@ -581,7 +576,7 @@ class SearchApi::DashboardController < ApplicationController
     results = value_result.sort_by { |h| [ h[:air], h[:closing_cost]] } || []
     benchmark_costs = calculate_savings_benchmark( results ) if results.present?
     results.each do |result|
-      result[:saving] = calculate_each_savings( benchmark_costs, result )    
+      result[:saving] = calculate_each_savings( benchmark_costs, result )
     end
     return results || []
   end
@@ -602,8 +597,12 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def calculate_each_savings(benchmark_costs, result)
-    current_costs = result[:monthly_payment] * @term.to_i * 12 + result[:closing_cost]
-    return benchmark_costs - current_costs
+    saving_amt = 0.0
+    if result[:monthly_payment].present? && result[:closing_cost].present?
+      current_costs = result[:monthly_payment] * @term.to_i * 12 + result[:closing_cost]
+      saving_amt = benchmark_costs - current_costs
+    end
+    return saving_amt
   end
 
   def loan_size_key_of_adjustment(loan_size_keys, value_loan_size)
