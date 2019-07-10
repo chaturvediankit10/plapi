@@ -1,20 +1,10 @@
 class SearchApi::DashboardController < ApplicationController
+  include Onload
   layout "application"
-  before_action :set_default, except: [:fetch_programs, :fetch_programs_by_bank]
+  before_action :set_default, except: [:fetch_programs, :fetch_programs_by_bank, :set_state_by_zip_code]
 
   def index
-    list_of_banks_and_programs_with_search_results
-  end
-
-  def list_of_banks_and_programs_with_search_results
-    @time = Benchmark.measure {
-      #@all_banks_name = @banks.pluck(:name)
-      if params["commit"].present?
-        set_variable
-      end
-      search_programs
-    }
-    puts "Query Time  #{@time.real}"
+    api_search
   end
 
   def fetch_programs_by_bank(html_type=false)
@@ -127,7 +117,7 @@ class SearchApi::DashboardController < ApplicationController
           @term = term.present? ? term.to_i : @term
           @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type, term: @term)
       end
-    end
+    end   
   end
 
   def split_arm_basic(arm)
@@ -184,10 +174,6 @@ class SearchApi::DashboardController < ApplicationController
           if %w[fannie_mae_product freddie_mac_product pro_category loan_category loan_purpose loan_type term].include?(key)
             instance_variable_set("@#{key}", key_value)
           end
-        else
-          if %w[fannie_mae_product freddie_mac_product term loan_size].include?(key)
-            @filter_not_nil[key.to_sym] = nil
-          end
         end
       end
     end
@@ -203,7 +189,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def modify_variables
-    %w[state property_type financing_type refinance_option refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price down_payment].each do |key|
+    %w[state property_type financing_type refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price down_payment].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
         if ((key == "home_price") || (key == "down_payment"))
@@ -220,17 +206,13 @@ class SearchApi::DashboardController < ApplicationController
     %w[arm_basic arm_advanced arm_caps arm_benchmark arm_margin].each do |key|
       if params.has_key?(key)
         key_value = params[key.to_sym]
-        if key_value.present?
-          if key_value == "All"
-            @filter_not_nil[key] = nil
+        if key_value.present? && key_value != "All"
+          if key == "arm_basic"
+            @filter_data[:arm_basic] = split_arm_basic(params[:arm_basic])
+            @arm_basic = params[:arm_basic]
           else
-            if key == "arm_basic"
-              @filter_data[:arm_basic] = split_arm_basic(params[:arm_basic])
-              @arm_basic = params[:arm_basic]
-            else
-              instance_variable_set("@#{key}", key_value) if key_value.present?
-              @filter_data[key] = adj_key_hash_required_value
-            end
+            instance_variable_set("@#{key}", key_value) if key_value.present?
+            @filter_data[key] = adj_key_hash_required_value
           end
         end
       end
@@ -325,8 +307,7 @@ class SearchApi::DashboardController < ApplicationController
   end
  
   def search_programs
-    program_list = @programs_all.where.not(@filter_not_nil)
-    program_list = program_list.where(@filter_data.except(:term))
+    program_list = @programs_all.where(@filter_data.except(:term))
     if (program_list.present? && (@filter_data.keys & [:loan_size]).any?)
       program_list = program_list.select{ |m| m if m.loan_size.split("&").map{ |l| l.strip }.include?(@filter_data[:loan_size]) }
     end
@@ -343,7 +324,6 @@ class SearchApi::DashboardController < ApplicationController
 
   # concer code for input api
   def find_adjustments_by_searched_programs(programs, value_lock_period, value_arm_basic, value_arm_advanced, value_arm_caps, value_fannie_mae_product, value_freddie_mac_product, value_loan_purpose, value_program_category, value_property_type, value_financing_type, value_premium_type, value_refinance_option, value_misc_adjuster, value_state, value_loan_type, value_loan_size, value_result, value_interest, value_loan_amount, value_ltv, value_cltv, value_term, value_credit_score, value_dti)
-
     data_hash = {}
     data_hash['LockDay'] = value_lock_period
     data_hash['ArmBasic'] = value_arm_basic
@@ -362,7 +342,6 @@ class SearchApi::DashboardController < ApplicationController
     data_hash['LoanAmount'] = value_loan_amount
     data_hash['LTV'] = value_ltv
     data_hash['FICO'] = value_credit_score
-    data_hash['MiscAdjuster'] = value_misc_adjuster
     data_hash['LoanSize'] = value_loan_size
     data_hash['CLTV'] = value_cltv
     data_hash['State'] = value_state
@@ -370,7 +349,7 @@ class SearchApi::DashboardController < ApplicationController
     data_hash['DTI'] = value_dti
 
     hash_obj = {
-                 :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0, :monthly_payment => 0.0 
+                 :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0, :monthly_payment => 0.0
                }
 
     all_adj_ids = []
@@ -447,7 +426,6 @@ class SearchApi::DashboardController < ApplicationController
                                   when 6
                                     adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
                                   end
-
                   if %w(LoanAmount LTV FICO LoanSize CLTV Term DTI).include?(key_name)
                     begin
                       if required_data.present?
@@ -503,40 +481,31 @@ class SearchApi::DashboardController < ApplicationController
                 end
               end
             end
+            point = case (adj_key_hash.keys.count-1)
+              when 0
+                adj.data[first_key][adj_key_hash[0]]
+              when 1
+                adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]]
+              when 2
+                adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]]
+              when 3
+                adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]]
+              when 4
+                adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]]
+              when 5
+                adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]][adj_key_hash[5]]
+              when 6
+                adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]][adj_key_hash[5]][adj_key_hash[6]]
+              end
 
-            adj_key_hash.keys.each do |hash_key, index|
-              begin
-                point = case hash_key
-                        when 0
-                          adj.data[first_key][adj_key_hash[hash_key]]
-                        when 1
-                          adj.data[first_key][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                        when 2
-                          adj.data[first_key][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                        when 3
-                          adj.data[first_key][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                        when 4
-                          adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
-                        when 5
-                          adj.data[first_key][adj_key_hash[hash_key-5]][adj_key_hash[hash_key-4]][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                        when 6
-                          adj.data[first_key][adj_key_hash[hash_key-6]][adj_key_hash[hash_key-5]][adj_key_hash[hash_key-4]][adj_key_hash[hash_key-3]][adj_key_hash[hash_key-2]][adj_key_hash[hash_key-1]][adj_key_hash[hash_key]]
-                        end
-
-                if adj_key_hash.keys.count-1==hash_key
-                  if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
-                    hash_obj[:adj_points] << point.to_f
-                    hash_obj[:final_rate] << point.to_f
-                    hash_obj[:adj_primary_key] << adj.data.keys.first
-                    hash_obj[:adjustment_pair][adj.data.keys.first] = point.to_f
-                    hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
-                  end
-                end
-              rescue Exception
+              if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
+                hash_obj[:adj_points] << point.to_f
+                hash_obj[:final_rate] << point.to_f
+                hash_obj[:adj_primary_key] << adj.data.keys.first
+                hash_obj[:adjustment_pair][adj.data.keys.first] = point.to_f
+                hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
               end
             end
-
-          end
         else
           hash_obj[:adj_points] = "Adjustment Not Present"
           hash_obj[:adj_primary_key] = "Adjustment Not Present"
@@ -557,7 +526,12 @@ class SearchApi::DashboardController < ApplicationController
           air = air_and_point_value['air'].try(:to_f)
           hash_obj[:air] = air
           hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
+          hash_obj[:starting_base_point] = air_and_point_value['starting_base_point']
+          hash_obj[:air_point] = air_and_point_value['air_point']
+
           hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
+
+          hash_obj[:monthly_breakdown] = SearchApi::Calculation.new.monthly_expenses_breakdown(loan_amount, (@term.to_i*12), hash_obj[:monthly_payment], @home_price.to_i, @default_annual_home_insurance, @default_pmi_insurance, @default_property_tax_perc, @down_payment, params)
         end
       end
 
@@ -582,7 +556,7 @@ class SearchApi::DashboardController < ApplicationController
     results = value_result.sort_by { |h| [ h[:air], h[:closing_cost]] } || []
     benchmark_costs = calculate_savings_benchmark( results ) if results.present?
     results.each do |result|
-      result[:saving] = calculate_each_savings( benchmark_costs, result )    
+      result[:saving] = calculate_each_savings( benchmark_costs, result )
     end
     return results || []
   end
@@ -603,8 +577,12 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def calculate_each_savings(benchmark_costs, result)
-    current_costs = result[:monthly_payment] * @term.to_i * 12 + result[:closing_cost]
-    return benchmark_costs - current_costs
+    saving_amt = 0.0
+    if result[:monthly_payment].present? && result[:closing_cost].present?
+      current_costs = result[:monthly_payment] * @term.to_i * 12 + result[:closing_cost]
+      saving_amt = benchmark_costs - current_costs
+    end
+    return saving_amt
   end
 
   def loan_size_key_of_adjustment(loan_size_keys, value_loan_size)
@@ -856,14 +834,15 @@ class SearchApi::DashboardController < ApplicationController
 
   def adjusted_interest_rate_calculate(pro, adj_points, point)
     air_key = {}
-    base_rate_keys = pro.base_rate.keys
+    base_rate_keys = pro.base_rate.keys.first.present? ? pro.base_rate.keys : pro.base_rate.keys.drop(1)
     total_adj = adj_points.present? ? adj_points.sum : 0
-    yellow_keys = pro.base_rate.values.map{|a| a[@lock_period]}
-    orange_keys = yellow_keys.map{|a| (a.to_f + total_adj.to_f).round(3)}
+    yellow_keys = pro.base_rate.values.map{|a| a[@lock_period]}.compact
+    orange_keys = yellow_keys.map{|a| (a.to_f + total_adj.to_f).round(3)}.compact
     air_value = orange_keys.map{|a| a.to_f if a.to_i == point && a.positive?}.compact.min
     if air_value.present?
-      air_key['air_point'] = air_value
-      air_key['air'] = base_rate_keys[orange_keys.index(air_value)]
+      air_key['air_point'] = air_value.to_f.round(3)
+      air_key['air'] = (base_rate_keys[orange_keys.index(air_value)]).to_f.round(3)
+      air_key['starting_base_point'] = yellow_keys[orange_keys.index(air_value)].to_f.round(3)
     end
     return air_key
   end
@@ -879,10 +858,6 @@ class SearchApi::DashboardController < ApplicationController
     end
     return monthly_payment
   end
-
-  # def calculate_apr_value(air_value)
-  #   ( 1 + air_value / 30 ) ** 365 - 1 rescue nil
-  # end
 
   def calculate_apr_value( air, term, loan_amount, points )
     # num_months    = term * 12.0
@@ -900,5 +875,4 @@ class SearchApi::DashboardController < ApplicationController
       return nil
     end
   end
-
 end
