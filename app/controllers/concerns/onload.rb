@@ -2,8 +2,8 @@ module Onload
   extend ActiveSupport::Concern
 
   def set_default
-    @source = params[:source].present? ? params[:source].to_i : 0  # 0: Main page. 1: 
-    @banks = Bank.all
+    @source = params[:source].present? ? params[:source].to_i : 0  # 0: Main page. 1: Internal search
+    #@banks = Bank.all
     @base_rate = 0.0
     @filter_data = {}
     @interest = "4.000"
@@ -42,13 +42,19 @@ module Onload
     @credit_score = (700..719).to_a
 
     @programs_all = load_programs_all
-    @program_names = @programs_all.pluck(:program_name).uniq.compact.sort
-    @loan_categories = @programs_all.pluck(:loan_category).uniq.compact.sort
-    @program_categories = @programs_all.pluck(:program_category).uniq.compact.sort
-    add_default_loan_cat
-    @term_list = @programs_all.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
-    @arm_advanced_list = @programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
-    @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
+
+    if @source == 1
+      @banks = Bank.all   
+      @all_banks_name = @banks.pluck(:name)
+      @program_names = @programs_all.pluck(:program_name).uniq.compact.sort
+      @loan_categories = @programs_all.pluck(:loan_category).uniq.compact.sort
+      @program_categories = @programs_all.pluck(:program_category).uniq.compact.sort
+      add_default_loan_cat
+      @arm_advanced_list = @programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
+      @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
+      @term_list = @programs_all.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
+    end
+
     @default_property_tax_perc = 0.86
     @default_annual_home_insurance = 974
     @default_pmi_insurance = 100.00
@@ -56,7 +62,6 @@ module Onload
 
   def api_search
     @time = Benchmark.measure {
-      @all_banks_name = @banks.pluck(:name)
       if params["commit"].present?
         set_variable
       end
