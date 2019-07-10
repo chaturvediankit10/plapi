@@ -8,7 +8,7 @@ class SearchApi::DashboardController < ApplicationController
 
   def list_of_banks_and_programs_with_search_results
     @time = Benchmark.measure {
-      @all_banks_name = @banks.pluck(:name)
+      #@all_banks_name = @banks.pluck(:name)
       if params["commit"].present?
         set_variable
       end
@@ -50,7 +50,6 @@ class SearchApi::DashboardController < ApplicationController
 
   def set_default
     @source = params[:source].present? ? params[:source].to_i : 0  # 0: Main page. 1: 
-    @banks = Bank.all
     @base_rate = 0.0
     @filter_data = {}
     @filter_not_nil = {}
@@ -90,13 +89,16 @@ class SearchApi::DashboardController < ApplicationController
     @credit_score = (700..719).to_a
 
     @programs_all = load_programs_all
-    @program_names = @programs_all.pluck(:program_name).uniq.compact.sort
-    @loan_categories = @programs_all.pluck(:loan_category).uniq.compact.sort
-    @program_categories = @programs_all.pluck(:program_category).uniq.compact.sort
-    add_default_loan_cat
-    @term_list = @programs_all.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
-    @arm_advanced_list = @programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
-    @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}    
+    if @source == 1
+      @banks = Bank.all
+      @program_names = @programs_all.pluck(:program_name).uniq.compact.sort
+      @loan_categories = @programs_all.pluck(:loan_category).uniq.compact.sort
+      @program_categories = @programs_all.pluck(:program_category).uniq.compact.sort
+      add_default_loan_cat
+    end
+    @term_list = [5,10,15,20,25,30].map{|y| [y.to_s + " yrs" , y]}.prepend(["All"]) #@programs_all.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
+    @arm_advanced_list = ["5-5"].map{|c| [c]} #@programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
+    @arm_caps_list = ["3-2-5"].map{|c| [c]} #@programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}    
   end
 
   def load_programs_all( filtered = 1 )
