@@ -7,7 +7,12 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def set_default
-    @source = params[:source].present? ? params[:source].to_i : 0  # 0: Main page. 1: Internal search
+    if request.base_url=="https://rate-sheet-extractor.herokuapp.com"
+      @source = 1
+    else
+      @source = 0
+    end
+    # @source = params[:source].present? ? params[:source].to_i : 0  # 0: Main page. 1: Internal search
     #@banks = Bank.all
     @base_rate = 0.0
     @filter_data = {}
