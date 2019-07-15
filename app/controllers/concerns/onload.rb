@@ -46,10 +46,6 @@ module Onload
     if @source == 1
       @banks = Bank.all   
       @all_banks_name = @banks.pluck(:name)
-      @program_names = @programs_all.pluck(:program_name).uniq.compact.sort
-      @loan_categories = @programs_all.pluck(:loan_category).uniq.compact.sort
-      @program_categories = @programs_all.pluck(:program_category).uniq.compact.sort
-      add_default_loan_cat
       @arm_advanced_list = @programs_all.pluck(:arm_advanced).push("5-5").compact.uniq.reject(&:empty?).map{|c| [c]}
       @arm_caps_list = @programs_all.pluck(:arm_caps).push("3-2-5").compact.uniq.reject(&:empty?).map{|c| [c]}
       @term_list = @programs_all.where('term <= ?', 999).pluck(:term).compact.uniq.push(5,10,15,20,25,30).uniq.sort.map{|y| [y.to_s + " yrs" , y]}.prepend(["All"])
