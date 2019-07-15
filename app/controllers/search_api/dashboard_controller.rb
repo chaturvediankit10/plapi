@@ -525,6 +525,7 @@ class SearchApi::DashboardController < ApplicationController
         value_result << hash_obj
       else
         value_result << hash_obj unless (hash_obj[:air] == 0.0)
+      end
       # value_result << hash_obj
 
       hash_obj = {
