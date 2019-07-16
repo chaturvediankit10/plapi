@@ -280,8 +280,7 @@ class SearchApi::DashboardController < ApplicationController
 
         if(base_rate_keys.include?(interest_rate))
           rate_index = base_rate_keys.index(interest_rate)
-          if( ( @source == 0 && program.base_rate[key_list[0]].keys.include?( @lock_period ) ) ||
-              ( @source == 1 && program.base_rate[key_list[rate_index]].keys.include?( @lock_period ) )
+          if( program.base_rate[key_list[rate_index]].keys.include?( @lock_period )
             )
             program_list << program
           end
