@@ -1,6 +1,6 @@
 class SearchApi::DashboardController < ApplicationController
   layout "application"
-  before_action :set_default, except: [:fetch_programs, :set_state_by_zip_code]
+  # before_action :set_default, except: [:fetch_programs, :set_state_by_zip_code]
 
   def index
     api_search
@@ -47,7 +47,7 @@ class SearchApi::DashboardController < ApplicationController
     @down_payment = "50000"
     @coverage = "30.5%"
     @margin = "2.0"
-    @ltv = (6500..7000).to_a.map{|e| e.to_f/100}
+    @ltv = (6501..7000).to_a.map{|e| e.to_f/100}
     @cltv = (7501..8000).to_a.map{|e| e.to_f/100}
     @credit_score = (700..719).to_a
     @programs_all = load_programs_all
@@ -57,6 +57,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def api_search
+    set_default
     @time = Benchmark.measure {
       if params["commit"].present?
         set_variable
@@ -117,7 +118,7 @@ class SearchApi::DashboardController < ApplicationController
         if key_value.present?
           if key_value.include?("-")
             key_range = (key_value.split("-").first.to_f..key_value.split("-").last.to_f)
-            key_range.step(0.01) { |f| array_data << f }
+            key_range.step(0.01) { |f| array_data << f.round(2) }
             instance_variable_set("@#{key}", array_data.try(:uniq))
           else
             instance_variable_set("@#{key}", key_value)
@@ -224,7 +225,7 @@ class SearchApi::DashboardController < ApplicationController
         lower = ltv_value.split("-").first.squish.to_i
         higher = ltv_value.split("-").last.squish.to_i
         if ltv.between?(lower, higher)
-          @ltv = (lower*100..higher*100).to_a.map{|e| e.to_f/100}
+          @ltv = (lower*100+1..higher*100).to_a.map{|e| e.to_f/100}
         end
       end
     end
@@ -331,7 +332,6 @@ class SearchApi::DashboardController < ApplicationController
     data_hash['State'] = value_state
     data_hash['Term'] = value_term
     data_hash['DTI'] = value_dti
-
     hash_obj = {
                  :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0, :monthly_payment => 0.0
                }
@@ -647,13 +647,13 @@ class SearchApi::DashboardController < ApplicationController
         else
           first_range = ltv_key.split("-").first.strip.to_f
           last_range =  ltv_key.split("-").last.strip.to_f
-          if params[:ltv] && params[:ltv].include?("+")
+          if params[:ltv].present? && params[:ltv].include?("+")
             full_range = params[:ltv] && params[:ltv].split("+").first.strip.to_f
             if (full_range >= first_range && full_range < last_range )
               ltv_key2 = ltv_key
             end
           else
-            (first_range..last_range).step(0.01) { |f| ltv_key_range << f }
+            (first_range..last_range).step(0.01) { |f| ltv_key_range << f.round(2) }
             ltv_key_range = ltv_key_range.uniq
             if (ltv_key_range & value_ltv).present?
               ltv_key2 = ltv_key
@@ -692,7 +692,7 @@ class SearchApi::DashboardController < ApplicationController
               cltv_key2 = cltv_key
             end
           else
-            (first_range..last_range).step(0.01) { |f| cltv_key_range << f }
+            (first_range..last_range).step(0.01) { |f| cltv_key_range << f.round(2) }
             cltv_key_range = cltv_key_range.uniq
             if (cltv_key_range & value_cltv).present?
               cltv_key2 = cltv_key
