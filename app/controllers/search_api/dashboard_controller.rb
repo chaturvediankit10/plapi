@@ -39,7 +39,7 @@ class SearchApi::DashboardController < ApplicationController
     @state = "All"
     @result = []
     @loan_amount = "0 - 50000"
-    @set_ltv = params[:ltv].present? ? params[:ltv] : "65.01 - 70.00"
+    @set_ltv = params[:ltv].present? ? params[:ltv] : "65.00 - 69.99"
     @set_credit_score = params[:credit_score].present? ? params[:credit_score] : "700-719"
     @dti = "25.6%"
     @loan_purpose = "Purchase"
@@ -47,8 +47,8 @@ class SearchApi::DashboardController < ApplicationController
     @down_payment = "50000"
     @coverage = "30.5%"
     @margin = "2.0"
-    @ltv = (6501..7000).to_a.map{|e| e.to_f/100}
-    @cltv = (7501..8000).to_a.map{|e| e.to_f/100}
+    @ltv = (6500..6999).to_a.map{|e| e.to_f/100}
+    @cltv = (7500..7999).to_a.map{|e| e.to_f/100}
     @credit_score = (700..719).to_a
     @programs_all = load_programs_all
     @default_property_tax_perc = 0.86
@@ -206,8 +206,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def set_loan_amount(loan_amt)
-    Program::LOAN_AMOUNT.each do |a|
-      loan_value = a[1]
+    Program::LOAN_AMOUNT.each do |loan_value|
       if loan_value.present? && loan_value.include?("-")
         lower = loan_value.split("-").first.squish.to_i
         higher = loan_value.split("-").last.squish.to_i
@@ -222,10 +221,10 @@ class SearchApi::DashboardController < ApplicationController
     Program::LTV_VALUES.each do |ltv_value|
       ltv_value = ltv_value[0]
       unless ltv_value.include?("+")
-        lower = ltv_value.split("-").first.squish.to_i
-        higher = ltv_value.split("-").last.squish.to_i
+        lower = ltv_value.split("-").first.squish.to_f
+        higher = ltv_value.split("-").last.squish.to_f
         if ltv.between?(lower, higher)
-          @ltv = (lower*100+1..higher*100).to_a.map{|e| e.to_f/100}
+          @ltv = ((lower*100).to_i..(higher*100).to_i).to_a.map{|e| e.to_f/100}
         end
       end
     end
