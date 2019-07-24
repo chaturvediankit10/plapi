@@ -158,7 +158,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def modify_condition
-    %w[fannie_mae_product freddie_mac_product bank_name program_name pro_category loan_category loan_purpose loan_type term loan_size].each do |key|
+    %w[fannie_mae_product freddie_mac_product bank_name program_name pro_category loan_category term loan_size].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
         unless (key_value == "All")
