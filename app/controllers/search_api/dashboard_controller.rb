@@ -89,21 +89,39 @@ class SearchApi::DashboardController < ApplicationController
     arm_basic = params[:arm_basic].present? ? params[:arm_basic] : @arm_basic
     term = params[:term].present? ? params[:term] : @term
 
-    if loan_type == "ARM"
-      if arm_basic != "All"
-        arm_basic = split_arm_basic(arm_basic)
-        @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type, arm_basic: arm_basic)
-      else
-        @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type)
-      end
-    else
-      if term == "All"
+    if loan_purpose == "Purchase"
+      if loan_type == "ARM"
+        if arm_basic != "All"
+          arm_basic = split_arm_basic(arm_basic)
+          @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type, arm_basic: arm_basic)
+        else
           @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type)
+        end
       else
-          @term = term.present? ? term.to_i : @term
-          @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type, term: @term)
+        if term == "All"
+            @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type)
+        else
+            @term = term.present? ? term.to_i : @term
+            @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type, term: @term)
+        end
       end
-    end   
+    else # This is only addhoc fix. It mistakenly includes Purchase only type for refinance. Will need sheet extraction fixes later. 
+      if loan_type == "ARM"
+        if arm_basic != "All"
+          arm_basic = split_arm_basic(arm_basic)
+          @programs_all = Program.where(loan_type: loan_type, arm_basic: arm_basic)
+        else
+          @programs_all = Program.where(loan_type: loan_type)
+        end
+      else
+        if term == "All"
+            @programs_all = Program.where(loan_type: loan_type)
+        else
+            @term = term.present? ? term.to_i : @term
+            @programs_all = Program.where(loan_type: loan_type, term: @term)
+        end
+      end
+    end
   end
 
   def split_arm_basic(arm)
