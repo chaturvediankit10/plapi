@@ -56,7 +56,7 @@ class Program < ApplicationRecord
 
   MARGIN_VALUES = [["2.0"]]
 
-  POINT_MODE_LIST = [["All"], ["Regular"], ["Expanded"]]
+  POINT_MODE_LIST = [ ["Regular"], ["Expanded"], ["All"] ]
 
   NMLS = {"NewRez" => 3013, "CMG Financial" => 1820, "Home Point Financial Corporation" => 7706, "UWM United Wholesale Mortgage" => 76801, "Newfi Wholesale" => 1231327, "Cardinal Financial" => 66247, "Allied Mortgage" => 1067, "Quicken Loans Mortgage Services" => 3030, "SunWest Wholesale" =>  3277, "Union Home Mortgage Wholesale" => 2229 }
 
