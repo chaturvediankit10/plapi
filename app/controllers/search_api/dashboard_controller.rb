@@ -841,8 +841,10 @@ class SearchApi::DashboardController < ApplicationController
     final_rate_column = base_rate_column.map{|a| (a.to_f + total_adj.to_f).round(3)}.compact
     
     air_point = final_rate_column.map{|a| a.to_f if a.to_i == point && a >= 0 }.compact.min
-    if not( air_point.present? ) && not( params[:point_mode] == "Regular" )
-      air_point = final_rate_column.map{|a| a.to_f if a.to_i >= point - 5 && a.to_i < point + 1 }.compact.max # closest one to Point on the other side of Point. 
+    if not( air_point.present? ) 
+      if @source == 0 || ( @source = 1 && not( params[:point_mode] == "Regular" ) )
+        air_point = final_rate_column.map{|a| a.to_f if a.to_i >= point - 5 && a.to_i < point + 1 }.compact.max # closest one to Point on the other side of Point. 
+      end
     end
 
     if air_point.present?
