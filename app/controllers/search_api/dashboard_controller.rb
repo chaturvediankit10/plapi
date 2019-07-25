@@ -542,7 +542,11 @@ class SearchApi::DashboardController < ApplicationController
         hash_obj[:closing_cost] = ((air_and_point_value['air_point'].try(:to_f)/100)*loan_amount) rescue nil
       end
 
-      value_result << hash_obj unless (hash_obj[:air] == 0.0)
+      if params[:point_mode] == "All"
+        value_result << hash_obj 
+      else        
+        value_result << hash_obj unless (hash_obj[:air] == 0.0)
+      end
 
       hash_obj = {
                    :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0, :monthly_payment => 0.0
@@ -830,15 +834,21 @@ class SearchApi::DashboardController < ApplicationController
 
   def adjusted_interest_rate_calculate(pro, adj_points, point)
     air_key = {}
+
     base_rate_keys = pro.base_rate.keys.first.present? ? pro.base_rate.keys : pro.base_rate.keys.drop(1)
     total_adj = adj_points.present? ? adj_points.sum : 0
     base_rate_column = pro.base_rate.values.map{|a| a[@lock_period]}.compact
     final_rate_column = base_rate_column.map{|a| (a.to_f + total_adj.to_f).round(3)}.compact
-    air_value = final_rate_column.map{|a| a.to_f if a.to_i == point && a >= 0 }.compact.min
-    if air_value.present?
-      air_key['air_point'] = air_value.to_f.round(3)
-      air_key['air'] = (base_rate_keys[final_rate_column.index(air_value)]).to_f.round(3)
-      air_key['starting_base_point'] = base_rate_column[final_rate_column.index(air_value)].to_f.round(3)
+    
+    air_point = final_rate_column.map{|a| a.to_f if a.to_i == point && a >= 0 }.compact.min
+    if not( air_point.present? ) && not( params[:point_mode] == "Regular" )
+      air_point = final_rate_column.map{|a| a.to_f if a.to_i >= point - 5 && a.to_i < point + 1 }.compact.max # closest one to Point on the other side of Point. 
+    end
+
+    if air_point.present?
+      air_key['air_point'] = air_point.to_f.round(3)
+      air_key['air'] = (base_rate_keys[final_rate_column.index(air_point)]).to_f.round(3)
+      air_key['starting_base_point'] = base_rate_column[final_rate_column.index(air_point)].to_f.round(3)
     end
     return air_key
   end
