@@ -54,6 +54,7 @@ class SearchApi::DashboardController < ApplicationController
     @default_property_tax_perc = 0.86
     @default_annual_home_insurance = 974
     @default_pmi_insurance = 100.00
+    @point_mode = "Regular"
   end
 
   def api_search
@@ -193,13 +194,11 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def modify_variables
-    %w[state property_type financing_type refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price down_payment].each do |key|
+    %w[state property_type financing_type refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price down_payment point_mode].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
         if ((key == "home_price") || (key == "down_payment"))
           key_value = key_value.present? ? key_value.tr(',', '') : nil
-        else
-          key_value = key_value
         end
         instance_variable_set("@#{key}", key_value) if key_value.present?
       end
@@ -542,7 +541,7 @@ class SearchApi::DashboardController < ApplicationController
         hash_obj[:closing_cost] = ((air_and_point_value['air_point'].try(:to_f)/100)*loan_amount) rescue nil
       end
 
-      if params[:point_mode] == "All"
+      if @point_mode == "All"
         value_result << hash_obj 
       else        
         value_result << hash_obj unless (hash_obj[:air] == 0.0)
@@ -834,15 +833,14 @@ class SearchApi::DashboardController < ApplicationController
 
   def adjusted_interest_rate_calculate(pro, adj_points, point)
     air_key = {}
-
     base_rate_keys = pro.base_rate.keys.first.present? ? pro.base_rate.keys : pro.base_rate.keys.drop(1)
     total_adj = adj_points.present? ? adj_points.sum : 0
     base_rate_column = pro.base_rate.values.map{|a| a[@lock_period]}.compact
     final_rate_column = base_rate_column.map{|a| (a.to_f + total_adj.to_f).round(3)}.compact
     
     air_point = final_rate_column.map{|a| a.to_f if a.to_i == point && a >= 0 }.compact.min
-    if not( air_point.present? ) 
-      if @source == 0 || ( @source = 1 && not( params[:point_mode] == "Regular" ) )
+    unless air_point.present?
+      if @source == 0 || (@source == 1 && @point_mode != "Regular")
         air_point = final_rate_column.map{|a| a.to_f if a.to_i >= point - 5 && a.to_i < point + 1 }.compact.max # closest one to Point on the other side of Point. 
       end
     end
