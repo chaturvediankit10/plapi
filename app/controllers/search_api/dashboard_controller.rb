@@ -23,7 +23,7 @@ class SearchApi::DashboardController < ApplicationController
     @credit_score = []
     @flag_loan_type = false
     @lock_period ="30"
-    @loan_size = "High-Balance"
+    @loan_size = "Conforming"
     @loan_type = "Fixed"
     @fannie_mae_product = "HomeReady"
     @freddie_mac_product = "Home Possible"
