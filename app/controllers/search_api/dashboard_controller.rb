@@ -38,7 +38,7 @@ class SearchApi::DashboardController < ApplicationController
     @misc_adjuster = "CA Escrow Waiver (Full or Taxes Only)"
     @state_code = "All"
     @result = []
-    @loan_amount = "0 - 50000"
+    @loan_amount = "250000 - 299999"
     @set_ltv = params[:ltv].present? ? params[:ltv] : "65.00 - 69.99"
     @set_credit_score = params[:credit_score].present? ? params[:credit_score] : "700-719"
     @dti = "25.6%"
@@ -79,8 +79,8 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def load_programs_all( filtered = 1 )
-    unless @state_code == "All"
-      banks = Bank.where("state@> ARRAY[?]::varchar[]", @state_code)
+    if params[:state_code].present? && params[:state_code] != "All"
+      banks = Bank.where("state@> ARRAY[?]::varchar[]", params[:state_code])
       programs = Program.where(bank_name: banks.map(&:name))
     else
       programs = Program.all
