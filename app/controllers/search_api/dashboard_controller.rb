@@ -36,7 +36,7 @@ class SearchApi::DashboardController < ApplicationController
     @premium_type ="1 Unit"
     @refinance_option = "Cash Out"
     @misc_adjuster = "CA Escrow Waiver (Full or Taxes Only)"
-    @state = "All"
+    @state_code = "All"
     @result = []
     @loan_amount = "0 - 50000"
     @set_ltv = params[:ltv].present? ? params[:ltv] : "65.00 - 69.99"
@@ -79,9 +79,15 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def load_programs_all( filtered = 1 )
+    unless @state_code == "All"
+      banks = Bank.where("state@> ARRAY[?]::varchar[]", @state_code)
+      programs = Program.where(bank_name: banks.map(&:name))
+    else
+      programs = Program.all
+    end
 
     if filtered < 1
-      @program_all = Program.all
+      @program_all = programs
       return;
     end
 
@@ -94,32 +100,32 @@ class SearchApi::DashboardController < ApplicationController
       if loan_type == "ARM"
         if arm_basic != "All"
           arm_basic = split_arm_basic(arm_basic)
-          @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type, arm_basic: arm_basic)
+          @programs_all = programs.where(loan_purpose: loan_purpose, loan_type: loan_type, arm_basic: arm_basic)
         else
-          @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type)
+          @programs_all = programs.where(loan_purpose: loan_purpose, loan_type: loan_type)
         end
       else
         if term == "All"
-            @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type)
+            @programs_all = programs.where(loan_purpose: loan_purpose, loan_type: loan_type)
         else
             @term = term.present? ? term.to_i : @term
-            @programs_all = Program.where(loan_purpose: loan_purpose, loan_type: loan_type, term: @term)
+            @programs_all = programs.where(loan_purpose: loan_purpose, loan_type: loan_type, term: @term)
         end
       end
     else # This is only addhoc fix. It mistakenly includes Purchase only type for refinance. Will need sheet extraction fixes later. 
       if loan_type == "ARM"
         if arm_basic != "All"
           arm_basic = split_arm_basic(arm_basic)
-          @programs_all = Program.where(loan_type: loan_type, arm_basic: arm_basic)
+          @programs_all = programs.where(loan_type: loan_type, arm_basic: arm_basic)
         else
-          @programs_all = Program.where(loan_type: loan_type)
+          @programs_all = programs.where(loan_type: loan_type)
         end
       else
         if term == "All"
-            @programs_all = Program.where(loan_type: loan_type)
+            @programs_all = programs.where(loan_type: loan_type)
         else
             @term = term.present? ? term.to_i : @term
-            @programs_all = Program.where(loan_type: loan_type, term: @term)
+            @programs_all = programs.where(loan_type: loan_type, term: @term)
         end
       end
     end
@@ -194,7 +200,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def modify_variables
-    %w[state property_type financing_type refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price down_payment point_mode].each do |key|
+    %w[state_code property_type financing_type refinance_option misc_adjuster premium_type interest lock_period loan_amount program_category payment_type dti home_price down_payment point_mode].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
         if ((key == "home_price") || (key == "down_payment"))
@@ -319,7 +325,7 @@ class SearchApi::DashboardController < ApplicationController
     
     @result = []
     if program_list.present?
-      @result = find_adjustments_by_searched_programs(program_list, @lock_period, @arm_basic, @arm_advanced, @arm_caps, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
+      @result = find_adjustments_by_searched_programs(program_list, @lock_period, @arm_basic, @arm_advanced, @arm_caps, @fannie_mae_product, @freddie_mac_product, @loan_purpose, @program_category, @property_type, @financing_type, @premium_type, @refinance_option, @misc_adjuster, @state_code, @loan_type, @loan_size, @result, @interest, @loan_amount, @ltv, @cltv, @term, @credit_score, @dti )
     end
   end
 
