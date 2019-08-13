@@ -16,6 +16,7 @@ class SearchApi::DashboardController < ApplicationController
     #@banks = Bank.all
     @base_rate = 0.0
     @filter_data = {}
+    @filter_not_nil = {}
     @interest = "4.000"
     @term = "30"
     @ltv = []
@@ -191,7 +192,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def modify_true_condition
-    %w[fannie_mae freddie_mac fannie_mae_du freddie_mac_lp fha va usda streamline full_doc].each do |key|
+    %w[fannie_mae freddie_mac fannie_mae_du freddie_mac_lp full_doc].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
         @filter_data[key.to_sym] = true
@@ -257,12 +258,24 @@ class SearchApi::DashboardController < ApplicationController
     modify_ltv_cltv_credit_score
     modify_condition
     modify_true_condition
+    modify_others_condition
     modify_variables
     loan_amt = (@home_price.to_i - @down_payment.to_i)
     set_loan_amount(loan_amt) if @source == 0
     set_ltv_value(loan_amt/@home_price.to_f*100) if @source == 0
     if params[ :loan_type ] == "ARM"
       set_arm_options
+    end
+  end
+
+  def modify_others_condition
+    %w[fha va usda streamline].each do |key|
+      key_value = params[key.to_sym]
+      if key_value.present?
+        @filter_data[key.to_sym] = true
+      else
+        @filter_not_nil[key.to_sym] = true if params[:others].present?
+      end
     end
   end
 
@@ -315,6 +328,8 @@ class SearchApi::DashboardController < ApplicationController
  
   def search_programs
     program_list = @programs_all.where(@filter_data.except(:term))
+    program_list = program_list.where.not(@filter_not_nil) if params[:others].present?
+
     if (program_list.present? && (@filter_data.keys & [:loan_size]).any?)
       program_list = program_list.select{ |m| m if m.loan_size.split("&").map{ |l| l.strip }.include?(@filter_data[:loan_size]) }
     end
