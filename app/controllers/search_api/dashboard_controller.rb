@@ -842,7 +842,7 @@ class SearchApi::DashboardController < ApplicationController
     base_rate_keys = pro.base_rate.keys.first.present? ? pro.base_rate.keys : pro.base_rate.keys.drop(1)
     total_adj = adj_points.present? ? adj_points.sum : 0
     base_rate_column = pro.base_rate.values.map{|a| a[@lock_period]}.compact
-    final_rate_column = base_rate_column.map{|a| (a.to_f < 50 ? a.to_f : ( 100 - a.to_f ) + total_adj.to_f).round(3)}.compact
+    final_rate_column = base_rate_column.map{|a| ( ( a.to_f < 50 ? a.to_f : ( 100 - a.to_f ) ) + total_adj.to_f).round(3)}.compact
     
     air_point = final_rate_column.map{|a| a.to_f if a.to_i == point && a >= 0 }.compact.min
     unless air_point.present?
