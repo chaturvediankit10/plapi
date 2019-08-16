@@ -58,7 +58,7 @@ class Program < ApplicationRecord
 
   POINT_MODE_LIST = [ ["Regular"], ["Expanded"], ["All"] ]
 
-  NMLS = {"NewRez" => 3013, "CMG Financial" => 1820, "Home Point" => 7706, "United Wholesale" => 76801, "Newfi Wholesale" => 1231327, "Cardinal Financial" => 66247, "Allied Mortgage" => 1067, "Quicken Loans" => 3030, "SunWest Wholesale" =>  3277, "Union Home" => 2229 }
+  NMLS = {"NewRez" => 3013, "CMG Financial" => 1820, "Home Point" => 7706, "United WholeSale" => 76801, "Newfi Wholesale" => 1231327, "Cardinal Financial" => 66247, "Allied Mortgage" => 1067, "Quicken Loans" => 3030, "SunWest Wholesale" =>  3277, "Union Home" => 2229 }
 
   scope :all_programs, -> {self.find_by_sql("SELECT * from programs")}
   # scope :arm_programs, -> {self.find_by_sql("SELECT * FROM programs WHERE loan_type = 'ARM'")}
