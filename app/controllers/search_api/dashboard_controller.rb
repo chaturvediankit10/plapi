@@ -273,7 +273,7 @@ class SearchApi::DashboardController < ApplicationController
 
   def modify_others_condition1
     data = {}
-    %w[fha va usda streamline fannie_mae fannie_mae_du freddie_mac freddie_mac_lp].each do |key|
+    %w[fha va usda streamline fannie_mae fannie_mae_du freddie_mac freddie_mac_lp fannie_mae_product freddie_mac_product ].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
         if %w[fannie_mae_product freddie_mac_product].include?(key)
@@ -284,12 +284,16 @@ class SearchApi::DashboardController < ApplicationController
         end
       end
     end
-    filter_query = data.to_a.map{|aa| "#{aa.first} = #{aa.last}"}.join(' OR ')
-    @programs_all = @programs_all.where(filter_query)
+    if data.present?
+      filter_query = data.to_a.map{|aa| "#{aa.first} = '#{aa.last}'"}.join(' OR ')
+      @programs_all = @programs_all.where(filter_query)
+    else
+      @programs_all = []
+    end
   end
 
   def modify_others_condition2
-    @others_programs = @programs_all.where.not('fha =? OR va =? OR usda =? OR streamline =? OR fannie_mae =? OR fannie_mae_du =? OR freddie_mac =? OR freddie_mac_lp =? OR freddie_mac_product =? OR fannie_mae_product =?', true, true, true, true, true, true, true, true, "Home Possible", "HomeReady")
+    @others_programs = @programs_all - @programs_all.where('fha =? OR va =? OR usda =? OR streamline =? OR fannie_mae =? OR fannie_mae_du =? OR freddie_mac =? OR freddie_mac_lp =? OR freddie_mac_product =? OR fannie_mae_product =?', true, true, true, true, true, true, true, true, "Home Possible", "HomeReady")
   end
 
   def find_programs_on_term_based(programs, find_term)
@@ -340,7 +344,7 @@ class SearchApi::DashboardController < ApplicationController
   end
  
   def search_programs
-    program_list = @programs_all.where(@filter_data.except(:term))
+    program_list = @programs_all.present? ? @programs_all.where(@filter_data.except(:term)) : []
     program_list = (program_list + @others_programs).uniq
     if (program_list.present? && (@filter_data.keys & [:loan_size]).any?)
       program_list = program_list.select{ |m| m if m.loan_size.split("&").map{ |l| l.strip }.include?(@filter_data[:loan_size]) }
