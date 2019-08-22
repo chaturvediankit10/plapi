@@ -1,6 +1,5 @@
 class SearchApi::DashboardController < ApplicationController
   layout "application"
-  # before_action :set_default, except: [:fetch_programs, :set_state_by_zip_code]
 
   def index
     api_search
@@ -12,8 +11,6 @@ class SearchApi::DashboardController < ApplicationController
     else
       @source = 0
     end
-    # @source = params[:source].present? ? params[:source].to_i : 0  # 0: Main page. 1: Internal search
-    #@banks = Bank.all
     @base_rate = 0.0
     @filter_data = {}
     @others_programs = []
@@ -551,29 +548,24 @@ class SearchApi::DashboardController < ApplicationController
 
       air_and_point_value = {}
       loan_amount = (@home_price.to_i - @down_payment.to_i).to_f rescue nil
+      hash_obj[:adj_points] << 0.0 unless hash_obj[:adj_points].present?
+      @point = 0
+      if params[:point].present?
+        @point = params[:point].to_i
+      end
+      air_and_point_value = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], @point)
 
-      if hash_obj[:adj_points].present?
-        @point = 0
-        if params[:point].present?
-          @point = params[:point].to_i
-        end
-        air_and_point_value = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], @point)
-
-        if air_and_point_value.present?
-          air = air_and_point_value['air'].try(:to_f)
-          hash_obj[:air] = air
-          hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
-          hash_obj[:starting_base_point] = air_and_point_value['starting_base_point']
-          hash_obj[:air_point] = air_and_point_value['air_point']
-
-          hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
-
-          hash_obj[:monthly_breakdown] = SearchApi::Calculation.new.monthly_expenses_breakdown(loan_amount, (@term.to_i*12), hash_obj[:monthly_payment], @home_price.to_i, @default_annual_home_insurance, @default_pmi_insurance, @default_property_tax_perc, @down_payment, params)
-        end
+      if air_and_point_value.present?
+        air = air_and_point_value['air'].try(:to_f)
+        hash_obj[:air] = air
+        hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
+        hash_obj[:starting_base_point] = air_and_point_value['starting_base_point']
+        hash_obj[:air_point] = air_and_point_value['air_point']
+        hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
+        hash_obj[:monthly_breakdown] = SearchApi::Calculation.new.monthly_expenses_breakdown(loan_amount, (@term.to_i*12), hash_obj[:monthly_payment], @home_price.to_i, @default_annual_home_insurance, @default_pmi_insurance, @default_property_tax_perc, @down_payment, params)
       end
 
       hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f)) rescue nil
-
       if air_and_point_value['air_point'].present?
         hash_obj[:closing_cost] = ((air_and_point_value['air_point'].try(:to_f)/100)*loan_amount) rescue nil
       end
@@ -588,7 +580,6 @@ class SearchApi::DashboardController < ApplicationController
                    :id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0, :monthly_payment => 0.0
                  }
     end
-    # results = value_result.sort_by { |h| h[:air] } || []
     results = value_result.sort_by { |h| [ h[:air], h[:closing_cost]] } || []
     benchmark_costs = calculate_savings_benchmark( results ) if results.present?
     results.each do |result|
@@ -596,16 +587,6 @@ class SearchApi::DashboardController < ApplicationController
     end
     return results || []
   end
-
-  # def calculate_each_savings(monthly_payment, benchmark_monthly_payment, term)
-  #   return (benchmark_monthly_payment - monthly_payment) * term * 12
-  # end
-
-  # def calculate_savings_benchmark(results)
-  #   size = results.count
-  #   benchmark_monthly_payment = results[size*0.8][:monthly_payment]
-  # end
-
 
   def calculate_savings_benchmark(results)
     benchmark_result = results[results.count*0.8]
