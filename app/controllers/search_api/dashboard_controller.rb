@@ -318,25 +318,31 @@ class SearchApi::DashboardController < ApplicationController
     return program_list
   end
 
-  def calculate_base_rate_of_selected_programs(programs)
+  def process_selected_programs(programs)
     program_list = []
-    programs.each do |program|
-      if program.base_rate.present?
-        base_rate_keys = program.base_rate.keys.map{ |k| ActionController::Base.helpers.number_with_precision(k, :precision => 3)}
 
-        interest_rate = ActionController::Base.helpers.number_with_precision(@interest.to_f.to_s, :precision => 3)
+    if source > 0
+      programs.each do |program|
+        if program.base_rate.present?
+          base_rate_keys = program.base_rate.keys.map{ |k| ActionController::Base.helpers.number_with_precision(k, :precision => 3)}
 
-        key_list = program.base_rate.keys
+          interest_rate = ActionController::Base.helpers.number_with_precision(@interest.to_f.to_s, :precision => 3)
 
-        if(base_rate_keys.include?(interest_rate))
-          rate_index = base_rate_keys.index(interest_rate)
-          if( program.base_rate[key_list[rate_index]].keys.include?( @lock_period )
-            )
-            program_list << program
+          key_list = program.base_rate.keys
+
+          if(base_rate_keys.include?(interest_rate))
+            rate_index = base_rate_keys.index(interest_rate)
+            if( program.base_rate[key_list[rate_index]].keys.include?( @lock_period )
+              )
+              program_list << program
+            end
           end
         end
       end
+    else
+      program_list = programs
     end
+
     return program_list
   end
  
@@ -348,7 +354,7 @@ class SearchApi::DashboardController < ApplicationController
     end
 
     if program_list.present?
-      program_list = calculate_base_rate_of_selected_programs(program_list)
+      program_list = process_selected_programs(program_list)
     end
     
     @result = []
