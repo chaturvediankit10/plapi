@@ -321,7 +321,7 @@ class SearchApi::DashboardController < ApplicationController
   def process_selected_programs(programs)
     program_list = []
 
-    if source > 0
+    if @source > 0
       programs.each do |program|
         if program.base_rate.present?
           base_rate_keys = program.base_rate.keys.map{ |k| ActionController::Base.helpers.number_with_precision(k, :precision => 3)}
