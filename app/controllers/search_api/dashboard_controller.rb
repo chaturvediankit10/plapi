@@ -106,8 +106,8 @@ class SearchApi::DashboardController < ApplicationController
         if term == "All"
             @programs_all = programs.where(loan_purpose: loan_purpose, loan_type: loan_type)
         else
-            @term = term.present? ? term.to_i : @term
-            @programs_all = programs.where(loan_purpose: loan_purpose, loan_type: loan_type, term: @term)
+            term_range = programs.pluck(:term).select{|a| (a.present? && a.to_s.length > 2 && a/100 <= term.to_i && term.to_i <= a%100) }.uniq
+            @programs_all = programs.where("loan_purpose = ? AND loan_type = ? AND term = ? OR term IN (?)", loan_purpose, loan_type, term.to_i, term_range)
         end
       end
     else # This is only addhoc fix. It mistakenly includes Purchase only type for refinance. Will need sheet extraction fixes later. 
@@ -122,8 +122,8 @@ class SearchApi::DashboardController < ApplicationController
         if term == "All"
             @programs_all = programs.where(loan_type: loan_type)
         else
-            @term = term.present? ? term.to_i : @term
-            @programs_all = programs.where(loan_type: loan_type, term: @term)
+            term_range = programs.pluck(:term).select{|a| (a.present? && a.to_s.length > 2 && a/100 <= term.to_i && term.to_i <= a%100) }.uniq
+            @programs_all = programs.where("loan_purpose = ? AND loan_type = ? AND term = ? OR term IN (?)", loan_purpose, loan_type, term.to_i, term_range)
         end
       end
     end
