@@ -899,7 +899,7 @@ class SearchApi::DashboardController < ApplicationController
     if ( points == 0 )
       return air
     elsif ( points < 0 )
-      loan = FinanceMath::Loan.new(nominal_rate: air, duration: term * 12, amount: loan_amount, structure_fee: -points, currency_protection: 0, fee: 0)
+      loan = air * 2 - FinanceMath::Loan.new(nominal_rate: air, duration: term * 12, amount: loan_amount, structure_fee: -points, currency_protection: 0, fee: 0)
     else
       loan = FinanceMath::Loan.new(nominal_rate: air, duration: term * 12, amount: loan_amount, structure_fee: points, currency_protection: 0, fee: 0)
     end
