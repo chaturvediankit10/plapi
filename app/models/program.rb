@@ -64,7 +64,13 @@ class Program < ApplicationRecord
   # scope :arm_programs, -> {self.find_by_sql("SELECT * FROM programs WHERE loan_type = 'ARM'")}
   # scope :no_arm_programs, -> {self.find_by_sql("SELECT * FROM programs WHERE loan_type != 'ARM'")}
 
-
+  def check_base_rate_range key
+    if key.between?(-10,10)
+      if key.to_s.split(".").last.to_i%5 == 0
+        return key
+      end
+    end
+  end
   def add_bank_name
     self.bank_name = self.sheet.bank.name if self.sheet.present?
     self.bank_name = self.sub_sheet.sheet.bank.name if self.sub_sheet.present?
