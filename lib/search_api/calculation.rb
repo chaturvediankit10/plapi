@@ -8,6 +8,7 @@ module SearchApi
       hoa_dues = {}
       monthly_expenses_sum = {}
       property_tax = {}
+      
 
       if params["monthly_property_tax"].present?
         property_tax[:monthly] = params["monthly_property_tax"].delete(',').to_f rescue 0.0
@@ -25,7 +26,8 @@ module SearchApi
       if params["commit"].nil? && params["monthly_home_insurance"].present?
         home_insurance[:monthly] = params["monthly_home_insurance"].delete(',').to_f
       else
-        home_insurance[:monthly] = (home_price*0.35).round(2) rescue 0.0
+        # home_insurance[:monthly] = (home_price*0.35).round(2) rescue 0.0
+        home_insurance[:monthly] = (default_annual_home_insurance/12) rescue 0.0
       end
 
       home_insurance[:total] = ((default_annual_home_insurance*1.0*number_of_payments)/12) rescue 0.0
@@ -36,7 +38,7 @@ module SearchApi
       else
         @pmi_insurance[:monthly] = default_pmi_insurance rescue 0.0
       end
-      @pmi_insurance[:total] =  @pmi_insurance[:monthly].to_i == 0 ? 0.0 :  @pmi_insurance[:monthly]*calculate_pmi_term rescue 0.0
+      @pmi_insurance[:total] =  @pmi_insurance[:monthly].to_i == 0 ? 0.0 :  @pmi_insurance[:monthly]*calculate_pmi_term(home_price, number_of_payments, down_payment) rescue 0.0
 
       if params["commit"].nil? && params["monthly_hoa_dues"].present?
         hoa_dues[:monthly] = params["monthly_hoa_dues"].delete(',').to_f
@@ -45,7 +47,6 @@ module SearchApi
       end
 
       hoa_dues[:total] = (hoa_dues[:monthly]*number_of_payments) rescue 0.0
-
       monthly_expenses_sum[:monthly] =  ((mortgage_principal[:monthly] + mortgage_interest[:monthly] + property_tax[:monthly] + home_insurance[:monthly] + @pmi_insurance[:monthly] + hoa_dues[:monthly]))  rescue 0.0
 
       monthly_expenses_sum[:total] = ((mortgage_principal[:total] + mortgage_interest[:total] + property_tax[:total] + home_insurance[:total] + @pmi_insurance[:total])) rescue 0.0
@@ -62,13 +63,12 @@ module SearchApi
 
       hoa_dues[:percentage] =  ((hoa_dues[:monthly]*100 / monthly_expenses_sum[:monthly])).round(2) rescue 0.0
 
-      monthly_expenses_sum[:percentage] = (mortgage_principal[:percentage] + mortgage_interest[:percentage] + property_tax[:percentage] + home_insurance[:percentage] + @pmi_insurance[:percentage] + hoa_dues[:percentage]).round() rescue 100
-
-      return { mortgage_principal: mortgage_principal,mortgage_interest: mortgage_interest,home_insurance: home_insurance,pmi_insurance: @pmi_insurance,hoa_dues: hoa_dues,monthly_expenses_sum: monthly_expenses_sum, property_tax: property_tax}
+      return { mortgage_principal: mortgage_principal,mortgage_interest: mortgage_interest,home_insurance: home_insurance,pmi_insurance: @pmi_insurance,hoa_dues: hoa_dues,monthly_expenses_sum: monthly_expenses_sum, property_tax: property_tax}  
     end
 
     def calculate_pmi_term(home_price, number_of_payments, down_payment)
-     (((home_price*0.22- down_payment)/((home_price - down_payment)/number_of_payments)).ceil) rescue 0
+     pmi_term = (((home_price*0.22- down_payment)/((home_price - down_payment)/number_of_payments)).ceil) rescue 0
+     return pmi_term
     end
 
 

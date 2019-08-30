@@ -51,7 +51,7 @@ class SearchApi::DashboardController < ApplicationController
     @programs_all = load_programs_all
     @default_property_tax_perc = 0.86
     @default_annual_home_insurance = 974
-    @default_pmi_insurance = 100.00
+    @default_pmi_insurance = ((@home_price.to_i*0.5)/100).to_f
     @point_mode = "Regular"
   end
 
@@ -261,6 +261,17 @@ class SearchApi::DashboardController < ApplicationController
     modify_others_condition1
     modify_variables
     loan_amt = (@home_price.to_i - @down_payment.to_i)
+    @default_pmi_insurance = ((@home_price.to_i*0.5)/100).to_f
+    if params[:state_code].present? && params[:state_code] != "All"
+      home_insurance = CalculatorHomeInsurance.where(state_code: params[:state_code])
+      if home_insurance.present?
+        @default_annual_home_insurance = home_insurance.first.avg_annual_insurance
+      end
+      property_tax = CalculatorPropertyTax.where(state_code: params[:state_code])
+      if property_tax.present?
+         @default_property_tax_perc =  property_tax.first.tax_rate
+      end
+    end
     set_loan_amount(loan_amt) if @source == 0
     set_ltv_value(loan_amt/@home_price.to_f*100) if @source == 0
     if params[ :loan_type ] == "ARM"
@@ -575,7 +586,7 @@ class SearchApi::DashboardController < ApplicationController
           hash_obj[:starting_base_point] = air_and_point_value['starting_base_point']
           hash_obj[:air_point] = air_and_point_value['air_point']
           hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
-          hash_obj[:monthly_breakdown] = SearchApi::Calculation.new.monthly_expenses_breakdown(loan_amount, (@term.to_i*12), hash_obj[:monthly_payment], @home_price.to_i, @default_annual_home_insurance, @default_pmi_insurance, @default_property_tax_perc, @down_payment, params)
+          hash_obj[:monthly_breakdown] = SearchApi::Calculation.new.monthly_expenses_breakdown(loan_amount, (@term.to_i*12), hash_obj[:monthly_payment], @home_price.to_i, @default_annual_home_insurance, @default_pmi_insurance, @default_property_tax_perc, @down_payment.to_i, params)
         end
 
         hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f)) rescue nil
