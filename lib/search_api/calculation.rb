@@ -9,7 +9,6 @@ module SearchApi
       monthly_expenses_sum = {}
       property_tax = {}
       
-
       if params["monthly_property_tax"].present?
         property_tax[:monthly] = params["monthly_property_tax"].delete(',').to_f rescue 0.0
         property_tax[:total] = (property_tax[:monthly]*number_of_payments) rescue 0.0
@@ -23,7 +22,7 @@ module SearchApi
 
       mortgage_interest[:monthly] = (calculate_monthly_payment-mortgage_principal[:monthly]) rescue 0.0
       mortgage_interest[:total] =  (calculate_monthly_payment*number_of_payments-mortgage_principal[:total]) rescue 0.0
-      if params["commit"].nil? && params["monthly_home_insurance"].present?
+      if params["monthly_home_insurance"].present?
         home_insurance[:monthly] = params["monthly_home_insurance"].delete(',').to_f
       else
         # home_insurance[:monthly] = (home_price*0.35).round(2) rescue 0.0
@@ -32,7 +31,7 @@ module SearchApi
 
       home_insurance[:total] = ((default_annual_home_insurance*1.0*number_of_payments)/12) rescue 0.0
 
-      if params["commit"].nil? && params["monthly_pmi_insurance"].present?
+      if params["monthly_pmi_insurance"].present?
         @pmi_insurance[:monthly] = params["monthly_pmi_insurance"].delete(',').to_f
         default_pmi_insurance = params["monthly_pmi_insurance"].delete(',').to_f
       else
@@ -40,7 +39,7 @@ module SearchApi
       end
       @pmi_insurance[:total] =  @pmi_insurance[:monthly].to_i == 0 ? 0.0 :  @pmi_insurance[:monthly]*calculate_pmi_term(home_price, number_of_payments, down_payment) rescue 0.0
 
-      if params["commit"].nil? && params["monthly_hoa_dues"].present?
+      if params["monthly_hoa_dues"].present?
         hoa_dues[:monthly] = params["monthly_hoa_dues"].delete(',').to_f
       else
         hoa_dues[:monthly] = 0.00

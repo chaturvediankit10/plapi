@@ -261,21 +261,26 @@ class SearchApi::DashboardController < ApplicationController
     modify_others_condition1
     modify_variables
     loan_amt = (@home_price.to_i - @down_payment.to_i)
-    @default_pmi_insurance = ((@home_price.to_i*0.5)/100).to_f
-    if params[:state_code].present? && params[:state_code] != "All"
-      home_insurance = CalculatorHomeInsurance.where(state_code: params[:state_code])
-      if home_insurance.present?
-        @default_annual_home_insurance = home_insurance.first.avg_annual_insurance
-      end
-      property_tax = CalculatorPropertyTax.where(state_code: params[:state_code])
-      if property_tax.present?
-         @default_property_tax_perc =  property_tax.first.tax_rate
-      end
-    end
+    set_calculator_values
     set_loan_amount(loan_amt) if @source == 0
     set_ltv_value(loan_amt/@home_price.to_f*100) if @source == 0
     if params[ :loan_type ] == "ARM"
       set_arm_options
+    end
+  end
+
+  def set_calculator_values
+    @default_pmi_insurance = ((@home_price.to_i*0.5)/100).to_f
+    if @state_code.present? && @state_code!="All" && @city_name.present?
+      property_tax = CalculatorPropertyTax.where(state_code: @state_code)
+      if property_tax.present?
+         @default_property_tax_perc =  property_tax.first.tax_rate
+      end
+
+      home_insurance = CalculatorHomeInsurance.where(state_code: @state_code)
+      if home_insurance.present?
+        @default_annual_home_insurance = home_insurance.first.avg_annual_insurance
+      end
     end
   end
 
