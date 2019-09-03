@@ -881,7 +881,8 @@ class SearchApi::DashboardController < ApplicationController
     if air_point.present?
       air_key['air_point'] = air_point.to_f.round(3)
       air_key['air'] = (base_rate_keys[final_rate_column.index(air_point)]).to_f.round(3)
-      air_key['starting_base_point'] = base_rate_column[final_rate_column.index(air_point)].to_f.round(3)
+      sbp = base_rate_column[final_rate_column.index(air_point)].to_f.round(3)
+      air_key['starting_base_point'] = sbp < 50.0 ? sbp : (100 - sbp)
     end
     return air_key
   end
