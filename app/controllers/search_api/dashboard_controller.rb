@@ -52,7 +52,7 @@ class SearchApi::DashboardController < ApplicationController
     @default_property_tax_perc = 0.86
     @default_annual_home_insurance = 974
     @default_pmi_insurance = ((@home_price.to_i*0.5)/100).to_f
-    @point_mode = "Regular"
+    @point_mode = "Expanded"
   end
 
   def api_search
