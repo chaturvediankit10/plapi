@@ -3,6 +3,7 @@ class Bank < ApplicationRecord
   has_many :sheets
 
   SHEET_LINKS = %w(
+    https://www.loansifter.com/DownloadFile.aspx?RateSheetID=5806
     https://www.loansifter.com/DownloadFile.aspx?RateSheetID=8570
     https://www.loansifter.com/DownloadFile.aspx?RateSheetID=10742
     https://www.loansifter.com/DownloadFile.aspx?RateSheetID=7575
