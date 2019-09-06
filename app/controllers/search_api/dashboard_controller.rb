@@ -277,10 +277,10 @@ class SearchApi::DashboardController < ApplicationController
   def set_calculator_values
     @default_pmi_insurance = ((@home_price.to_i*0.5)/100).to_f
     if @state_code.present? && @state_code!="All" && @city_name.present?
-      # property_tax = CalculatorPropertyTax.where(state_code: @state_code)
-      # if property_tax.present?
-      #    @default_property_tax_perc =  property_tax.first.tax_rate
-      # end
+      property_tax = CalculatorPropertyTax.where(state_code: @state_code)
+      if property_tax.present?
+         @default_property_tax_perc =  property_tax.first.tax_rate
+      end
 
       home_insurance = CalculatorHomeInsurance.where(state_code: @state_code)
       if home_insurance.present?
