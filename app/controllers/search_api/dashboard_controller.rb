@@ -78,10 +78,18 @@ class SearchApi::DashboardController < ApplicationController
 
   def load_programs_all( filtered = 1 )
     if params[:state_code].present? && params[:state_code] != "All"
-      banks = Bank.where("state@> ARRAY[?]::varchar[]", params[:state_code])
+      if @source==1 && !params[:bank_name].blank? && params[:bank_name]!="All"
+        banks = Bank.where("state@> ARRAY[?]::varchar[] AND name = ?", params[:state_code], params[:bank_name])
+      else
+        banks = Bank.where("state@> ARRAY[?]::varchar[]", params[:state_code])
+      end
       programs = Program.where(bank_name: banks.map(&:name))
     else
-      programs = Program.all
+      if @source==1 && !params[:bank_name].blank? && params[:bank_name]!="All"
+       programs = Program.where(bank_name: params[:bank_name])
+      else
+        programs = Program.all
+      end
     end
 
     if filtered < 1
@@ -168,7 +176,7 @@ class SearchApi::DashboardController < ApplicationController
   end
 
   def modify_condition
-    %w[bank_name program_name pro_category loan_category term loan_size].each do |key|
+    %w[program_name pro_category loan_category term loan_size].each do |key|
       key_value = params[key.to_sym]
       if key_value.present?
         unless (key_value == "All")
