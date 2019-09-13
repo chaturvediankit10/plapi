@@ -60,17 +60,13 @@ class Program < ApplicationRecord
 
   NMLS = {"NewRez" => 3013, "CMG Financial" => 1820, "Home Point" => 7706, "United Wholesale" => 76801, "Newfi Wholesale" => 1231327, "Cardinal Financial" => 66247, "Allied Mortgage" => 1067, "Quicken Loans" => 3030, "SunWest Wholesale" =>  3277, "Union Home" => 2229 }
 
+  BANK_LINK = {"NewRez" => "https://www.newrez.com/contact-us/", "CMG Financial" => "https://www.cmgfi.com/corporate/contact", "Home Point" => "https://www.homepointfinancial.com/contact", "United Wholesale" => "https://www.unitedwholesalelending.com/", "Newfi Wholesale" => "https://newfiwholesale.com/", "Cardinal Financial" => "https://cardinalfinancial.com/contact-us/", "Allied Mortgage" => "https://alliedmg.com/contact", "Quicken Loans" => "https://www.quickenloans.com/about/contact", "SunWest Wholesale" =>  "https://www.swmc.com/swmc/login.php", "Union Home" => "https://www.unionbankonline.co.in/ContactUs.html" }
+
   scope :all_programs, -> {self.find_by_sql("SELECT * from programs")}
   # scope :arm_programs, -> {self.find_by_sql("SELECT * FROM programs WHERE loan_type = 'ARM'")}
   # scope :no_arm_programs, -> {self.find_by_sql("SELECT * FROM programs WHERE loan_type != 'ARM'")}
 
-  def check_base_rate_range key
-    if key.between?(-10,10)
-      if key.to_s.split(".").last.to_i%5 == 0
-        return key
-      end
-    end
-  end
+
   def add_bank_name
     self.bank_name = self.sheet.bank.name if self.sheet.present?
     self.bank_name = self.sub_sheet.sheet.bank.name if self.sub_sheet.present?
