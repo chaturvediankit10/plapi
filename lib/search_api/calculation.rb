@@ -70,6 +70,44 @@ module SearchApi
      return pmi_term
     end
 
+    def set_default_property_tax_perc(state_code)
+      if state_code.present? && state_code!="All"
+        property_tax = CalculatorPropertyTax.where(state_code: state_code)
+        if property_tax.present?
+           def_pro_tax =  property_tax.first.tax_rate
+        end
+      end
+      return def_pro_tax.present? ? def_pro_tax :  0.86
+    end
+
+    def set_default_annual_home_insurance(state_code)
+      if state_code.present? && state_code!="All"
+        home_insurance = CalculatorHomeInsurance.where(state_code: state_code)
+        if home_insurance.present?
+          def_annual_home_ins = home_insurance.first.avg_annual_insurance
+        end
+      end
+      return def_annual_home_ins.present? ? def_annual_home_ins : 974
+    end
+
+    def set_price_to_rent_ratio(city_name, state_code)
+      if state_code.present? && state_code!="All" && city_name.present?
+        price_to_rent_ratio = CalculatorPriceToRentRatio.where(city: city_name)
+        if price_to_rent_ratio.present?
+          price_to_rent_ratio = price_to_rent_ratio.first.price_rent_ratio
+        else
+          price_to_rent_ratio = CalculatorPriceToRentRatio.where(state_code: state_code)
+          if price_to_rent_ratio.present?
+            price_to_rent_ratio = price_to_rent_ratio.first.price_rent_ratio
+          end
+        end
+      end
+      return price_to_rent_ratio.present? ? price_to_rent_ratio : 38.02
+    end
+
+    def set_default_pmi_insurance(loan_amount)
+      return ((loan_amount*0.5)/100)/12.to_f
+    end
 
   end
 end
