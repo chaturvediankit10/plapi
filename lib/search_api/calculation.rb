@@ -109,5 +109,21 @@ module SearchApi
       return ((loan_amount*0.5)/100)/12.to_f
     end
 
+    def monthly_interest_rate(annual_interest_rate)
+      return (annual_interest_rate.to_f*1.0/12/100) rescue 0.0
+    end
+
+    def calculate_discount_factor(monthly_interest_rate, number_of_payments)
+      dis_factor = ((((1+monthly_interest_rate) ** number_of_payments)-1)/(monthly_interest_rate * (1 + monthly_interest_rate)** number_of_payments)) rescue 0.0
+      dis_factor = 0.0 if (dis_factor.nan? || dis_factor.infinite?)
+      return dis_factor.to_f
+    end
+
+    def calculate_monthly_payment(calculate_loan_payment,calculate_discount_factor)
+      monthly_pay = (calculate_loan_payment/calculate_discount_factor) rescue 0.0
+      monthly_pay = 0.0 if (monthly_pay.nan? || monthly_pay.infinite?)
+      return monthly_pay
+    end
+
   end
 end

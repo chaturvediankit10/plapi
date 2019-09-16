@@ -586,11 +586,15 @@ class SearchApi::DashboardController < ApplicationController
         if air_and_point_value.present?
           air = air_and_point_value['air'].try(:to_f)
           hash_obj[:air] = air
-          hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
+          # hash_obj[:monthly_payment] = calculate_monthly_payment(loan_amount, hash_obj[:air], @term )
           hash_obj[:starting_base_point] = air_and_point_value['starting_base_point']
           hash_obj[:air_point] = air_and_point_value['air_point']
           hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
-          hash_obj[:monthly_breakdown] = SearchApi::Calculation.new.monthly_expenses_breakdown(loan_amount, (@term.to_i*12), hash_obj[:monthly_payment], @home_price.to_i, @default_annual_home_insurance, @default_pmi_monthly, @default_property_tax_perc, @down_payment.to_i, params)
+          monthly_interest_rate_value = SearchApi::Calculation.new.monthly_interest_rate(@interest.to_f)
+          calculate_discount_factor_value = SearchApi::Calculation.new.calculate_discount_factor(monthly_interest_rate_value, (@term.to_i*12))
+          calculate_monthly_payment_value = SearchApi::Calculation.new.calculate_monthly_payment((@home_price.to_f - @down_payment.to_f), calculate_discount_factor_value)
+          hash_obj[:monthly_breakdown] = SearchApi::Calculation.new.monthly_expenses_breakdown(loan_amount, (@term.to_i*12), calculate_monthly_payment_value, @home_price.to_i, @default_annual_home_insurance, @default_pmi_monthly, @default_property_tax_perc, @down_payment.to_i, params)
+          hash_obj[:monthly_payment] = hash_obj[:monthly_breakdown][:monthly_expenses_sum][:monthly]
         end
 
         hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f)) rescue nil
@@ -902,17 +906,17 @@ class SearchApi::DashboardController < ApplicationController
     return air_key
   end
 
-  def calculate_monthly_payment(p, interest, term)
-    monthly_payment = nil
-    if interest.present? && p.present? && term.present?
-      if interest != 0.0
-        r = (interest.to_f/12)/100 rescue nil
-        n = term.to_i*12 rescue nil
-        monthly_payment = ((r * p) / (1 - ((1 + r) ** (-1 * n)))) rescue nil
-      end
-    end
-    return monthly_payment
-  end
+  # def calculate_monthly_payment(p, interest, term)
+  #   monthly_payment = nil
+  #   if interest.present? && p.present? && term.present?
+  #     if interest != 0.0
+  #       r = (interest.to_f/12)/100 rescue nil
+  #       n = term.to_i*12 rescue nil
+  #       monthly_payment = ((r * p) / (1 - ((1 + r) ** (-1 * n)))) rescue nil
+  #     end
+  #   end
+  #   return monthly_payment
+  # end
 
   def calculate_apr_value( air, term, loan_amount, points )
     # num_months    = term * 12.0
