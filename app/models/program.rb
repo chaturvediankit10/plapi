@@ -60,19 +60,29 @@ class Program < ApplicationRecord
 
   NMLS = {"NewRez" => 3013, "CMG Financial" => 1820, "Home Point" => 7706, "United Wholesale" => 76801, "Newfi Wholesale" => 1231327, "Cardinal Financial" => 66247, "Allied Mortgage" => 1067, "Quicken Loans" => 3030, "SunWest Wholesale" =>  3277, "Union Home" => 2229 }
 
-  # BANK_LINK = {"NewRez" => "https://www.newrez.com/contact-us/", "CMG Financial" => "https://www.cmgfi.com/corporate/contact", "Home Point" => "https://www.homepointfinancial.com/contact", "United Wholesale" => "https://www.unitedwholesalelending.com/", "Newfi Wholesale" => "https://newfiwholesale.com/", "Cardinal Financial" => "https://cardinalfinancial.com/contact-us/", "Allied Mortgage" => "https://alliedmg.com/contact", "Quicken Loans" => "https://www.quickenloans.com/about/contact", "SunWest Wholesale" =>  "https://www.swmc.com/swmc/login.php", "Union Home" => "http://www.uhwholesale.com/about-us.html" }
-  BANK_LINK = { 
-    "NewRez" => "https://apply.newrez.com/dashboard/loan-dashboard/“, 
-    "CMG Financial" => "https://www.cmgfi.com/consumer", 
-    "Home Point" => "https://apply.hpfc.com/#/create-account", 
-    "United Wholesale" => "https://www.uwm.com/start-a-loan/create-a-loan", 
-    "Newfi Wholesale" => "https://newfiwholesale.com/resources", 
-    "Cardinal Financial" => "https://cardinalfinancial.com/myaccount/“, 
-    "Allied Mortgage" => "https://allied.mymortgage-online.com/?loanapp&siteid=1699577309&lar=scohen&workFlowId=39110”,
-    "Quicken Loans" => "https://www.quickenloans.com/l/progpi?qlsource=applynow", 
-    "SunWest Wholesale" =>  "https://www.swmc.com/ApplyNow/",
-    "Union Home" => "http://www.uhwholesale.com/get-approved.html" 
-    }
+  BANK_LINK = {"NewRez" => "https://apply.newrez.com/dashboard/loan-dashboard/", 
+    "CMG Financial" => "https://www.cmgfi.com/consumer", 
+    "Home Point" => "https://apply.hpfc.com/#/create-account", 
+    "United Wholesale" => "https://www.uwm.com/start-a-loan/create-a-loan", 
+    "Newfi Wholesale" => "https://newfiwholesale.com/resources", 
+    "Cardinal Financial" => "https://cardinalfinancial.com/myaccount/", 
+    "Allied Mortgage" => "https://allied.mymortgage-online.com/?loanapp&siteid=1699577309&lar=scohen&workFlowId=39110", 
+    "Quicken Loans" => "https://www.quickenloans.com/l/progpi?qlsource=applynow", 
+    "SunWest Wholesale" =>  "https://www.swmc.com/ApplyNow/", 
+    "Union Home" => "http://www.uhwholesale.com/get-approved.html" }
+    
+  # BANK_LINK = { 
+  #   "NewRez" => "https://apply.newrez.com/dashboard/loan-dashboard/“, 
+  #   "CMG Financial" => "https://www.cmgfi.com/consumer", 
+  #   "Home Point" => "https://apply.hpfc.com/#/create-account", 
+  #   "United Wholesale" => "https://www.uwm.com/start-a-loan/create-a-loan", 
+  #   "Newfi Wholesale" => "https://newfiwholesale.com/resources", 
+  #   "Cardinal Financial" => "https://cardinalfinancial.com/myaccount/“, 
+  #   "Allied Mortgage" => "https://allied.mymortgage-online.com/?loanapp&siteid=1699577309&lar=scohen&workFlowId=39110”,
+  #   "Quicken Loans" => "https://www.quickenloans.com/l/progpi?qlsource=applynow", 
+  #   "SunWest Wholesale" =>  "https://www.swmc.com/ApplyNow/",
+  #   "Union Home" => "http://www.uhwholesale.com/get-approved.html" 
+  #   }
 
   scope :all_programs, -> {self.find_by_sql("SELECT * from programs")}
   # scope :arm_programs, -> {self.find_by_sql("SELECT * FROM programs WHERE loan_type = 'ARM'")}
