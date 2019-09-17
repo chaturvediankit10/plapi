@@ -63,6 +63,218 @@ class SearchApi::DashboardController < ApplicationController
     puts "Total Query Time for line 58-65: #{@total_time.real}"
   end
 
+  def calculate_sensitivity_analysis
+    pro = Program.find_by(program_name: params[:program][:program_name], bank_name: params[:program][:bank_name])
+    loan_amt = params[:loan_amount].to_f
+    value_interest = 4.000
+    value_lock_period = "30"
+    if params[:credit_score].present? && params[:credit_score].include?("-")
+      credit_score = (params[:credit_score].split("-").first.to_i..params[:credit_score].split("-").last.to_i).to_a.try(:uniq)
+    else
+      credit_score = params[:credit_score]
+    end
+
+    data_hash = {}
+    data_hash['LockDay'] = params[:lock_period].present? ? params[:lock_period] : "30"
+    data_hash['ArmBasic'] = pro.arm_basic
+    data_hash['ArmAdvanced'] = pro.arm_advanced
+    data_hash['ArmCaps'] = pro.arm_caps
+    data_hash['FannieMaeProduct'] = pro.fannie_mae_product
+    data_hash['FreddieMacProduct'] = pro.freddie_mac_product
+    data_hash['LoanPurpose'] = pro.loan_purpose
+    data_hash['ProgramCategory'] = params[:pro_category].present? ? params[:pro_category] : "6900"
+    data_hash['PropertyType'] = params[:property_type].present? ? params[:property_type] :  "1 Unit"
+    data_hash['FinancingType'] = params[:financing_type].present? ? params[:financing_type] : "Subordinate Financing"
+    data_hash['PremiumType'] = params[:premium_type].present? ? params[:premium_type] : "1 Unit"
+    data_hash['RefinanceOption'] = params[:refinance_option].present? ? params[:refinance_option] : "Cash Out"
+    data_hash['MiscAdjuster'] = params[:misc_adjuster].present? ? params[:misc_adjuster] : "CA Escrow Waiver (Full or Taxes Only)"
+    data_hash['LoanType'] = params[:loan_type].present? ? params[:loan_type] : "Fixed"
+    data_hash['LoanAmount'] = loan_amt
+    data_hash['LTV'] = params[:ltv]
+    data_hash['FICO'] = credit_score
+    data_hash['LoanSize'] = pro.loan_size
+    data_hash['CLTV'] = params[:ltv]
+    data_hash['State'] = params[:state_code].present? && params[:state_code]!="All" ? params[:state_code] : "CA"
+    data_hash['Term'] = params[:term].present? ? params[:term] : "30"
+    data_hash['DTI'] = params[:dti].present? ? params[:dti] : "25.6%"
+
+    hash_obj = {:id => "", :term => nil, :air => 0.0, :conforming => "", :fannie_mae => "", :fannie_mae_home_ready => "", :freddie_mac => "", :freddie_mac_home_possible => "", :fha => "", :va => "", :usda => "", :streamline => "", :full_doc => "", :loan_category => "", :program_category => "", :bank_name => "", :program_name => "", :loan_type => "", :loan_purpose => "", :arm_basic => "", :arm_advanced => "", :arm_caps => "", :loan_size => "", :fannie_mae_product => "", :freddie_mac_product => "", :fannie_mae_du => "", :freddie_mac_lp => "", :arm_benchmark => "", :arm_margin => "", :base_rate => 0.0, :adj_points => [], :adj_primary_key => [], :final_rate => [], :cell_number=>[], :closing_cost => 0.0, :adjustment_pair => {}, :apr => 0.0, :monthly_payment => 0.0 }
+    hash_obj.except(:air, :base_rate, :adj_points, :adj_primary_key, :final_rate, :cell_number, :closing_cost, :apr, :adjustment_pair, :monthly_payment).keys.map{ |key| hash_obj[key.to_sym] = pro.send(key) }
+    if pro.base_rate.present?
+      base_rate_keys = pro.base_rate.keys.map{ |k| ActionController::Base.helpers.number_with_precision(k, :precision => 3)}
+      interest_rate = ActionController::Base.helpers.number_with_precision(value_interest.to_f.to_s, :precision => 3)
+
+      key_list = pro.base_rate.keys
+
+      if(base_rate_keys.include?(interest_rate))
+        rate_index = base_rate_keys.index(interest_rate)
+        if(pro.base_rate[key_list[rate_index]].keys.include?(value_lock_period))
+          hash_obj[:base_rate] = pro.base_rate[key_list[rate_index]][value_lock_period]
+        else
+          hash_obj[:base_rate] = 0.0
+        end
+
+        %w(LoanType ArmBasic ArmAdvanced ArmCaps FannieMaeProduct FreddieMacProduct LoanPurpose LoanSize).each do |key_name|
+          field_name = key_name&.strip&.underscore
+          data_hash[key_name] = pro.send(field_name)
+        end
+
+        pro_term = pro.term
+        if (pro_term.to_s.length <=2 )
+          value_term = pro_term.to_s
+        else
+          first = pro_term/100
+          last = pro_term%100
+          value_term = first.to_s+"-"+last.to_s
+        end
+        data_hash['Term'] = value_term
+      end
+    end
+
+    if pro.adjustment_ids.present?
+     # program_adjustments = pro.adjustments
+
+      # program_adjustment_ids = pro.adjustment_ids.split(',').collect{|e| e.to_i}
+      program_adjustments = Adjustment.find(pro.adjustment_ids.split(','))
+
+      if program_adjustments.present?
+        program_adjustments.each do |adj|
+          first_key = adj.data.keys.first
+          key_list = first_key.split("/")
+          adj_key_hash = {}
+
+          non_adjustment_input_values = %w(HighBalance Conforming FannieMae FannieMaeHomeReady FreddieMac FreddieMacHomePossible FHA VA USDA Streamline FullDoc Jumbo FHLMC LPMI EPMI FNMA)
+
+          key_list.each_with_index do |key_name, key_index|
+            if(Adjustment::INPUT_VALUES.include?(key_name))
+              if (0..6).include?(key_index)
+                required_data = case key_index
+                                when 0
+                                  adj.data[first_key]
+                                when 1
+                                  adj.data[first_key][adj_key_hash[key_index-1]]
+                                when 2
+                                  adj.data[first_key][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
+                                when 3
+                                  adj.data[first_key][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
+                                when 4
+                                  adj.data[first_key][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
+                                when 5
+                                  adj.data[first_key][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
+                                when 6
+                                  adj.data[first_key][adj_key_hash[key_index-6]][adj_key_hash[key_index-5]][adj_key_hash[key_index-4]][adj_key_hash[key_index-3]][adj_key_hash[key_index-2]][adj_key_hash[key_index-1]]
+                                end
+                if %w(LoanAmount LTV FICO LoanSize CLTV Term DTI).include?(key_name)
+                  begin
+                    if required_data.present?
+                      method_name_initial_word = key_name&.strip&.underscore
+                      response_data = send(*["#{method_name_initial_word}_key_of_adjustment",required_data.keys, data_hash[key_name]])
+                      if response_data.present?
+                        adj_key_hash[key_index] = response_data
+                      else
+                        break
+                      end
+                    else
+                      break
+                    end
+                  rescue Exception
+                  end
+                elsif key_name == "State"
+                  begin
+                    if value_state == "All"
+                      first_state_key = required_data.keys.tap{|e| e.delete("cell_number") }.first
+                      if required_data[first_state_key].present?
+                        adj_key_hash[key_index] = first_state_key
+                      else
+                        break
+                      end
+                    else
+                      adj_key_hash_required_value = required_data[data_hash[key_name]]
+                      if adj_key_hash_required_value.present?
+                        adj_key_hash[key_index] = data_hash[key_name]
+                      else
+                        break
+                      end
+                    end
+                  rescue Exception
+                  end
+                else
+                  begin
+                    if (0..6).include?(key_index)
+                      if required_data[data_hash[key_name]].present?
+                        adj_key_hash[key_index] = data_hash[key_name]
+                      else
+                        break
+                      end
+                    end
+                  rescue Exception
+                  end
+                end
+              end
+            else
+              if (0..6).include?(key_index)
+                if non_adjustment_input_values.include?(key_name)
+                  adj_key_hash[key_index] = "true"
+                end
+              end
+            end
+          end
+          point = case (adj_key_hash.keys.count-1)
+            when 0
+              adj.data[first_key][adj_key_hash[0]]
+            when 1
+              adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]]
+            when 2
+              adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]]
+            when 3
+              adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]]
+            when 4
+              adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]]
+            when 5
+              adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]][adj_key_hash[5]]
+            when 6
+              adj.data[first_key][adj_key_hash[0]][adj_key_hash[1]][adj_key_hash[2]][adj_key_hash[3]][adj_key_hash[4]][adj_key_hash[5]][adj_key_hash[6]]
+            end
+
+            if (((point.is_a? Float) || (point.is_a? Integer) || (point.is_a? String)) && (point != "N/A") && (point != "n/a") && (point != "NA") && (point != "na") && (point != "-"))
+              hash_obj[:adj_points] << point.to_f
+              hash_obj[:final_rate] << point.to_f
+              hash_obj[:adj_primary_key] << adj.data.keys.first
+              hash_obj[:adjustment_pair][adj.data.keys.first] = point.to_f
+              hash_obj[:cell_number] << adj.data[first_key]["cell_number"]
+            end
+          end
+      else
+        hash_obj[:adj_points] = "Adjustment Not Present"
+        hash_obj[:adj_primary_key] = "Adjustment Not Present"
+      end
+    end
+    air_and_point_value = {}
+    hash_obj[:adj_points] << 0.0 unless hash_obj[:adj_points].present?
+    point_value = 0
+    point_mode = "Expanded"
+    value_lock_period = "30"
+    source = 0
+    air_and_point_value = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], point_value, value_lock_period, source, point_mode)
+    if air_and_point_value.present?
+      air = air_and_point_value['air'].try(:to_f)
+      # hash_obj[:air] = air
+      # hash_obj[:starting_base_point] = air_and_point_value['starting_base_point']
+      hash_obj[:air_point] = air_and_point_value['air_point']
+      # hash_obj[:apr] = calculate_apr_value( air, term.to_i, loan_amount, air_and_point_value['air_point'] )
+      # monthly_interest_rate_value = SearchApi::Calculation.new.monthly_interest_rate(@interest.to_f)
+      # calculate_discount_factor_value = SearchApi::Calculation.new.calculate_discount_factor(monthly_interest_rate_value, (term.to_i*12))
+      # calculate_monthly_payment_value = SearchApi::Calculation.new.calculate_monthly_payment(loan_amount, calculate_discount_factor_value)
+      # hash_obj[:monthly_breakdown] = SearchApi::Calculation.new.monthly_expenses_breakdown(loan_amount, (term.to_i*12), calculate_monthly_payment_value, @home_price.to_i, @default_annual_home_insurance, @default_pmi_monthly, @default_property_tax_perc, @down_payment.to_i, params)
+      # hash_obj[:monthly_payment] = hash_obj[:monthly_breakdown][:monthly_expenses_sum][:monthly]
+      hash_obj[:closing_cost] = ((air_and_point_value['air_point'].try(:to_f)/100)*loan_amt) rescue nil
+    end
+
+    # hash_obj[:final_rate] << (hash_obj[:base_rate].to_f < 50.0 ? hash_obj[:base_rate].to_f : (100 - hash_obj[:base_rate].to_f)) rescue nil
+
+    render json: {hash_obj: hash_obj}
+  end
+
   private
 
   def add_default_loan_cat
@@ -76,9 +288,9 @@ class SearchApi::DashboardController < ApplicationController
   def load_programs_all( filtered = 1 )
     if params[:state_code].present? && params[:state_code] != "All"
       if @source==1 && !params[:bank_name].blank? && params[:bank_name]!="All"
-        banks = Bank.where("state@> ARRAY[?]::varchar[] AND name = ?", params[:state_code], params[:bank_name])
+        banks = Bank.where("state_eligibility@> ARRAY[?]::varchar[] AND name = ?", params[:state_code], params[:bank_name])
       else
-        banks = Bank.where("state@> ARRAY[?]::varchar[]", params[:state_code])
+        banks = Bank.where("state_eligibility@> ARRAY[?]::varchar[]", params[:state_code])
       end
       programs = Program.where(bank_name: banks.map(&:name))
     else
@@ -259,6 +471,7 @@ class SearchApi::DashboardController < ApplicationController
         end
       end
     end
+  return @ltv
   end
 
   def set_variable
@@ -425,7 +638,6 @@ class SearchApi::DashboardController < ApplicationController
 
         if pro.base_rate.present?
           base_rate_keys = pro.base_rate.keys.map{ |k| ActionController::Base.helpers.number_with_precision(k, :precision => 3)}
-
           interest_rate = ActionController::Base.helpers.number_with_precision(value_interest.to_f.to_s, :precision => 3)
 
           key_list = pro.base_rate.keys
@@ -581,7 +793,7 @@ class SearchApi::DashboardController < ApplicationController
         if params[:point].present?
           @point = params[:point].to_i
         end
-        air_and_point_value = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], @point)
+        air_and_point_value = adjusted_interest_rate_calculate(pro, hash_obj[:adj_points], @point, @lock_period, @source, @point_mode)
 
         if air_and_point_value.present?
           air = air_and_point_value['air'].try(:to_f)
@@ -883,16 +1095,15 @@ class SearchApi::DashboardController < ApplicationController
     return dti_key_2
   end
 
-  def adjusted_interest_rate_calculate(pro, adj_points, point)
+  def adjusted_interest_rate_calculate(pro, adj_points, point,lock_period, source, point_mode)
     air_key = {}
     base_rate_keys = pro.base_rate.keys.first.present? ? pro.base_rate.keys : pro.base_rate.keys.drop(1)
     total_adj = adj_points.present? ? adj_points.sum : 0
-    base_rate_column = pro.base_rate.values.map{|a| a[@lock_period]}.compact
+    base_rate_column = pro.base_rate.values.map{|a| a[lock_period]}.compact
     final_rate_column = base_rate_column.map{|a| ( ( a.to_f < 50 ? a.to_f : ( 100 - a.to_f ) ) + total_adj.to_f).round(3)}.compact
-    
     air_point = final_rate_column.map{|a| a.to_f if a.to_i == point && a >= 0 }.compact.min
     unless air_point.present?
-      if @source == 0 || (@source == 1 && @point_mode != "Regular")
+      if source == 0 || (source == 1 && point_mode != "Regular")
         air_point = final_rate_column.map{|a| a.to_f if a.to_i >= point - 5 && a.to_i < point + 1 }.compact.max # closest one to Point on the other side of Point. 
       end
     end
