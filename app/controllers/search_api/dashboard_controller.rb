@@ -802,7 +802,7 @@ class SearchApi::DashboardController < ApplicationController
           hash_obj[:starting_base_point] = air_and_point_value['starting_base_point']
           hash_obj[:air_point] = air_and_point_value['air_point']
           hash_obj[:apr] = calculate_apr_value( air, @term.to_i, loan_amount, air_and_point_value['air_point'] )
-          monthly_interest_rate_value = SearchApi::Calculation.new.monthly_interest_rate(@interest.to_f)
+          monthly_interest_rate_value = SearchApi::Calculation.new.monthly_interest_rate(air.to_f)
           calculate_discount_factor_value = SearchApi::Calculation.new.calculate_discount_factor(monthly_interest_rate_value, (@term.to_i*12))
           calculate_monthly_payment_value = SearchApi::Calculation.new.calculate_monthly_payment((@home_price.to_f - @down_payment.to_f), calculate_discount_factor_value)
           hash_obj[:monthly_breakdown] = SearchApi::Calculation.new.monthly_expenses_breakdown(loan_amount, (@term.to_i*12), calculate_monthly_payment_value, @home_price.to_i, @default_annual_home_insurance, @default_pmi_monthly, @default_property_tax_perc, @down_payment.to_i, params)
