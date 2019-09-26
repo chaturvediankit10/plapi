@@ -58,7 +58,7 @@ class SearchApi::DashboardController < ApplicationController
       if params["commit"].present?
         set_variable
       end
-        search_programs
+        search_loans
     }
     puts "Total Query Time for line 58-65: #{@total_time.real}"
   end
@@ -571,7 +571,7 @@ class SearchApi::DashboardController < ApplicationController
     return program_list
   end
  
-  def search_programs
+  def search_loans
     program_list = []
     @search_prog = Benchmark.measure {
       program_list = @programs_all.present? ? @programs_all.where(@filter_data.except(:term)) : []
